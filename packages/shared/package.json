@@ -1,0 +1,19 @@
+{
+  "name": "@clipforge/shared",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'no lint configured'"
+  },
+  "dependencies": {
+    "@clipforge/database": "workspace:*",
+    "zod": "^3.25.56"
+  },
+  "devDependencies": {
+    "@clipforge/config": "workspace:*",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,17 @@
+[project]
+name = "clipforge-worker-ai"
+version = "0.1.0"
+description = "ClipForge AI worker (transcription, clip scoring, metadata)"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.34.0",
+  "redis>=5.2.0",
+  "httpx>=0.28.0",
+]
+
+[project.optional-dependencies]
+ml = [
+  "faster-whisper>=1.1.0",
+  "openai>=1.60.0",
+]
