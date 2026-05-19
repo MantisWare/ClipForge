@@ -15,7 +15,13 @@ Both scripts will:
 2. Generate `AUTH_SECRET` if still set to the placeholder  
 3. Run `pnpm install`  
 4. Run Prisma generate + `migrate deploy`  
-5. Start `pnpm dev` (Next.js on http://localhost:3000)
+5. Start `pnpm dev` (Next.js + BullMQ worker on http://localhost:3000)
+
+Run the job worker in a **second terminal** if not using root `pnpm dev` (which starts web + worker together):
+
+```bash
+pnpm dev:worker
+```
 
 Optional seed (demo user/workspace):
 
@@ -35,7 +41,49 @@ CLIPFORGE_SEED=1 ./start-docker.sh
 | pnpm | 9+ | `corepack enable && corepack prepare pnpm@9.15.0 --activate` |
 | OpenSSL | any | Used to generate `AUTH_SECRET` on first run |
 
-**Phase 2+ (optional):** FFmpeg, Python 3.11+ for workers — not required for the web scaffold.
+**Phase 2 (source import):** `ffmpeg` / `ffprobe` on PATH, `yt-dlp` for YouTube downloads, MinIO (or S3) for stored source files, Redis for BullMQ. The Node worker (`apps/worker`) runs `source.import` jobs.
+
+```bash
+# macOS (Homebrew)
+brew install ffmpeg yt-dlp
+
+# Verify
+ffmpeg -version
+yt-dlp --version
+```
+
+Set in `.env` (see [`.env.example`](.env.example)): `YOUTUBE_API_KEY`, `YTDLP_PATH`, `MAX_SOURCE_BYTES`, `IMPORT_TEMP_DIR`, and existing `S3_*` / `REDIS_URL`.
+
+**Phase 3 (transcription):** Python 3.11+ and `services/worker-ai` (Faster-Whisper). After import, `apps/worker` auto-chains `media.extract_audio` → `media.transcribe` when `AUTO_TRANSCRIBE=true`.
+
+```bash
+# Python env (once)
+cd services/worker-ai
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Run worker-ai (separate terminal, port 8002)
+uvicorn app.main:app --reload --port 8002
+```
+
+First transcription run downloads the Whisper model (`WHISPER_MODEL`, default `base`). Set `AUTO_TRANSCRIBE=false` to skip auto-transcription when worker-ai is not running.
+
+**Phase 4 (clip candidates):** Requires transcript (`status: ready`). Set `OPENAI_API_KEY` for LLM scoring via `worker-ai` (`POST /v1/score-clips`). Without a key, candidates are ranked by heuristics only.
+
+- `AUTO_GENERATE_CLIPS=true` — enqueue `ai.score_clips` after transcription completes
+- `AUTO_GENERATE_CLIPS=false` (default) — use **Generate clips** on the project page
+
+```bash
+# worker-ai must be running (same terminal as Phase 3)
+uvicorn app.main:app --reload --port 8002
+```
+
+**Phase 5 (rendering):** Approve a clip → **Render** on the project page. Output is 1080×1920 MP4 with burned captions and hook text. Preview and download at `/clips/{renderedId}/preview`.
+
+**Phase 6 (publishing):** Connect YouTube at `/accounts` (uses `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` + `YOUTUBE_OAUTH_REDIRECT_URI`). Publish from render preview or download MP4 for TikTok/Instagram manual upload.
+
+**Phase 7 (discovery):** `/discover` uses `YOUTUBE_API_KEY` for search and most-popular feeds. **Analyze** imports a video into your workspace (rights confirmation still deferred).
 
 Make scripts executable once:
 
@@ -256,6 +304,32 @@ Health checks: http://localhost:8001/health · http://localhost:8002/health
 | `pnpm db:seed` | Demo user + workspace |
 | `pnpm typecheck` | TypeScript across packages |
 | `pnpm --dir packages/database exec prisma migrate deploy` | Non-interactive migrations |
+
+---
+
+## Phase 8 — Polish (OSS)
+
+ClipForge is free and open source. There is no Stripe or billing integration.
+
+After pulling Phase 8, apply the migration:
+
+```bash
+pnpm db:generate
+pnpm --dir packages/database exec prisma migrate deploy
+```
+
+Optional env limits (see `.env.example`):
+
+| Variable | Purpose |
+|----------|---------|
+| `MAX_SOURCES_PER_WORKSPACE` | Cap imports per workspace |
+| `MAX_RENDERS_PER_DAY` | Cap renders per workspace per day |
+| `BATCH_RENDER_CONCURRENCY` | Parallel renders in `batch.render` (default 2) |
+| `ADMIN_USER_IDS` | Comma-separated user IDs for `/api/admin/*` |
+
+Features: brand kits, caption presets (ASS), batch render, content calendar (YouTube schedule), analytics dashboard, projects list.
+
+Full spec: [docs/phase-8-polish.md](docs/phase-8-polish.md)
 
 ---
 

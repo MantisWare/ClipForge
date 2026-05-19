@@ -1,10 +1,24 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { AnalyticsClient } from "@/components/analytics/analytics-client";
+import { getSessionUserId } from "@/lib/auth";
+import { getActiveWorkspace } from "@/lib/workspace-context";
+import { redirect } from "next/navigation";
 
-export default function AnalyticsPage() {
+export default async function AnalyticsPage() {
+  const userId = await getSessionUserId();
+  if (userId === null) {
+    redirect("/sign-in");
+  }
+  const workspace = await getActiveWorkspace(userId);
+
   return (
-    <PlaceholderPage
-      title="Analytics"
-      description="Clip performance and feedback loop (Phase 8)."
-    />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">Analytics</h1>
+        <p className="mt-1 text-sm text-muted">
+          Workspace activity for the last 30 days.
+        </p>
+      </div>
+      <AnalyticsClient workspaceId={workspace.id} />
+    </div>
   );
 }

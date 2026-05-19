@@ -3,15 +3,19 @@
 @tailwind utilities;
 
 :root {
-  --background: #0b0f17;
-  --panel: #111827;
-  --panel-2: #172033;
-  --border: #263244;
-  --foreground: #f8fafc;
+  --background: #000000;
+  --panel: #0f0a14;
+  --panel-2: #1a1028;
+  --border: #2d1f4e;
+  --foreground: #ffffff;
   --muted: #94a3b8;
-  --accent: #f97316;
+  --accent-pink: #ff3385;
+  --accent-orange: #ff8c00;
+  --accent-cyan: #00e5ff;
+  --accent-purple: #4b0082;
+  --accent: #ff3385;
   --success: #22c55e;
-  --warning: #facc15;
+  --warning: #ffd700;
   --danger: #ef4444;
 }
 
@@ -25,4 +29,29 @@ body {
     "Segoe UI",
     Roboto,
     sans-serif;
+}
+
+@layer utilities {
+  .bg-brand-gradient {
+    background: linear-gradient(
+      135deg,
+      var(--accent-pink) 0%,
+      var(--accent-orange) 100%
+    );
+  }
+
+  .text-brand-gradient {
+    background: linear-gradient(
+      135deg,
+      var(--accent-pink) 0%,
+      var(--accent-orange) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .border-brand-glow {
+    box-shadow: 0 0 0 1px var(--border), 0 0 12px rgb(0 229 255 / 15%);
+  }
 }

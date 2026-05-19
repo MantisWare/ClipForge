@@ -1,5 +1,5 @@
 import { apiError, apiSuccess, parseJsonBody } from "@/lib/api";
-import { requireUser, requireWorkspace } from "@/lib/api-auth";
+import { requireUser, requireWorkspaceEditor } from "@/lib/api-auth";
 import { prisma, ClipStatus } from "@clipforge/database";
 import { rejectClipSchema } from "@clipforge/shared";
 
@@ -24,7 +24,7 @@ export const POST = async (
     return apiError("NOT_FOUND", "Clip not found", 404);
   }
 
-  const access = await requireWorkspace(
+  const access = await requireWorkspaceEditor(
     authResult.userId,
     parsed.data.workspaceId,
   );

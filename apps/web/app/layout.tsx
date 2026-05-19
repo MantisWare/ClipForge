@@ -3,9 +3,19 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ClipForge",
+  title: "ClipForge AI",
   description:
     "Turn long-form videos into platform-ready Shorts, Reels, and TikToks.",
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
+  openGraph: {
+    title: "ClipForge AI",
+    description:
+      "Turn long-form videos into platform-ready Shorts, Reels, and TikToks.",
+    images: [{ url: "/logo.png" }],
+  },
 };
 
 export default function RootLayout({

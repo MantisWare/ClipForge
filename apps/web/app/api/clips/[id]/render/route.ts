@@ -1,8 +1,11 @@
 import { apiError, apiSuccess, parseJsonBody } from "@/lib/api";
-import { requireUser, requireWorkspace } from "@/lib/api-auth";
+import { requireUser, requireWorkspaceEditor } from "@/lib/api-auth";
+import { buildDisclosureBlock, requiresDisclosure } from "@/lib/overlay-compliance";
+import { assertRenderQuota } from "@/lib/quotas";
 import { enqueueJob } from "@/lib/queue";
+import { validateProductUrls } from "@/lib/url-safety";
 import { prisma, ClipStatus, RenderStatus } from "@clipforge/database";
-import { renderClipSchema } from "@clipforge/shared";
+import { renderClipSchema, scoreOverlayDensity } from "@clipforge/shared";
 
 export const POST = async (
   request: Request,
@@ -28,7 +31,7 @@ export const POST = async (
     return apiError("NOT_FOUND", "Clip not found", 404);
   }
 
-  const access = await requireWorkspace(
+  const access = await requireWorkspaceEditor(
     authResult.userId,
     parsed.data.workspaceId,
   );
@@ -36,12 +39,86 @@ export const POST = async (
     return access.error;
   }
 
+  const quota = await assertRenderQuota(parsed.data.workspaceId);
+  if ("error" in quota) {
+    return quota.error;
+  }
+
+  if (clip.status !== ClipStatus.approved) {
+    return apiError(
+      "VALIDATION_ERROR",
+      "Only approved clips can be rendered",
+      400,
+    );
+  }
+
+  const overlays = await prisma.clipOverlay.findMany({
+    where: { clipCandidateId: clip.id, isDraft: false },
+    include: { productLink: true },
+  });
+
+  if (parsed.data.includeOverlays === true && overlays.length === 0) {
+    return apiError(
+      "VALIDATION_ERROR",
+      "No confirmed overlays to burn in. Add overlays or render without includeOverlays.",
+      400,
+    );
+  }
+
+  const settings = await prisma.workspaceOverlaySettings.findUnique({
+    where: { workspaceId: parsed.data.workspaceId },
+  });
+
+  if (
+    requiresDisclosure(overlays) &&
+    settings?.requireDisclosureOnExport === true
+  ) {
+    const disclosure = buildDisclosureBlock({
+      defaultDisclosureText: settings.defaultDisclosureText,
+      overlays,
+      productDisclosures: overlays
+        .map((o) => o.productLink?.disclosureText)
+        .filter((d): d is string => d !== null && d !== undefined && d !== ""),
+    });
+    if (disclosure === null) {
+      return apiError(
+        "VALIDATION_ERROR",
+        "Affiliate or sponsored overlays require workspace disclosure text",
+        400,
+      );
+    }
+  }
+
+  const productUrls = overlays
+    .map((o) => o.productLink?.url)
+    .filter((u): u is string => u !== undefined && u !== "");
+  const urlChecks = validateProductUrls(
+    productUrls,
+    settings?.urlAllowlist ?? [],
+  );
+  const badUrl = urlChecks.find((c) => !c.ok);
+  if (badUrl !== undefined && !badUrl.ok) {
+    return apiError("VALIDATION_ERROR", badUrl.reason, 400);
+  }
+
+  const density = scoreOverlayDensity(
+    overlays.map((o) => ({
+      startMs: o.startMs,
+      endMs: o.endMs,
+      position:
+        typeof o.position === "object" && o.position !== null
+          ? (o.position as { anchor?: string; marginPx?: number })
+          : undefined,
+    })),
+  );
+
   const rendered = await prisma.renderedClip.create({
     data: {
       clipCandidateId: clip.id,
       workspaceId: parsed.data.workspaceId,
       renderPreset: parsed.data.renderPreset,
       captionStyleId: parsed.data.captionStyleId,
+      brandKitId: parsed.data.brandKitId,
       status: RenderStatus.queued,
     },
   });
@@ -50,13 +127,14 @@ export const POST = async (
     workspaceId: parsed.data.workspaceId,
     type: "render.clip",
     sourceVideoId: clip.sourceVideoId,
-    payload: { renderedClipId: rendered.id, clipCandidateId: clip.id },
+    payload: {
+      renderedClipId: rendered.id,
+      clipCandidateId: clip.id,
+      workspaceId: parsed.data.workspaceId,
+      includeOverlays: parsed.data.includeOverlays,
+      brandKitId: parsed.data.brandKitId,
+    },
   });
 
-  await prisma.clipCandidate.update({
-    where: { id },
-    data: { status: ClipStatus.rendered },
-  });
-
-  return apiSuccess({ rendered, job }, 202);
+  return apiSuccess({ rendered, job, overlayWarnings: density.warnings }, 202);
 };

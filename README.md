@@ -2,7 +2,7 @@
 
 **Turn long-form videos into platform-ready Shorts, Reels, and TikToks** with AI-assisted clipping, captions, and publishing.
 
-ClipForge turns long-form sources into short-form clips with AI-assisted editing and publishing. Rights confirmation and discovery guardrails are planned for a later phase.
+ClipForge turns long-form sources into short-form clips with AI-assisted editing and publishing. It is **free and open source** — no Stripe or paid tiers. Rights confirmation and discovery guardrails are planned for a later phase.
 
 ## Architecture
 
@@ -160,7 +160,7 @@ Full spec: [docs/clipforge_ai_shorts_platform_cursor_spec.md](docs/clipforge_ai_
 
 ## Progress
 
-Track implementation phases in **[CHECKLIST.md](CHECKLIST.md)**.
+Track implementation phases in **[CHECKLIST.md](CHECKLIST.md)**. Future monetization overlays (ads, affiliate links, product CTAs) are planned in **Phase 9** — see [docs/phase-9-monetization-overlays.md](docs/phase-9-monetization-overlays.md).
 
 ## Compliance (deferred)
 

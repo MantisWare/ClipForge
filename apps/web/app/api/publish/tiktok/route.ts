@@ -1,5 +1,6 @@
 import { apiError, apiSuccess, parseJsonBody } from "@/lib/api";
-import { requireUser, requireWorkspace } from "@/lib/api-auth";
+import { requireUser, requireWorkspaceEditor } from "@/lib/api-auth";
+import { assertRenderedClipReady } from "@/lib/publish-validation";
 import { enqueueJob } from "@/lib/queue";
 import { prisma, PublishJobStatus, Platform } from "@clipforge/database";
 import { publishTikTokSchema } from "@clipforge/shared";
@@ -16,12 +17,17 @@ export const POST = async (request: Request) => {
     return apiError("VALIDATION_ERROR", parsed.error.message, 400);
   }
 
-  const access = await requireWorkspace(
+  const access = await requireWorkspaceEditor(
     authResult.userId,
     parsed.data.workspaceId,
   );
   if ("error" in access) {
     return access.error;
+  }
+
+  const renderedCheck = await assertRenderedClipReady(parsed.data.renderedClipId);
+  if ("error" in renderedCheck) {
+    return renderedCheck.error;
   }
 
   const publishJob = await prisma.publishJob.create({
@@ -47,10 +53,13 @@ export const POST = async (request: Request) => {
     },
   });
 
-  return apiSuccess({
-    publishJob,
-    job,
-    message: "TikTok direct post may require audit; export fallback available",
-    stub: true,
-  }, 202);
+  return apiSuccess(
+    {
+      publishJob,
+      job,
+      message:
+        "TikTok direct post may require audit; export fallback available",
+    },
+    202,
+  );
 };

@@ -1,7 +1,7 @@
 import { apiError, apiSuccess, parseJsonBody } from "@/lib/api";
-import { requireUser, requireWorkspace } from "@/lib/api-auth";
+import { requireUser, requireWorkspaceEditor } from "@/lib/api-auth";
 import { enqueueJob } from "@/lib/queue";
-import { prisma } from "@clipforge/database";
+import { prisma, SourceStatus } from "@clipforge/database";
 import { generateCandidatesSchema } from "@clipforge/shared";
 
 export const POST = async (request: Request) => {
@@ -16,7 +16,7 @@ export const POST = async (request: Request) => {
     return apiError("VALIDATION_ERROR", parsed.error.message, 400, parsed.error.flatten());
   }
 
-  const access = await requireWorkspace(
+  const access = await requireWorkspaceEditor(
     authResult.userId,
     parsed.data.workspaceId,
   );
@@ -26,16 +26,52 @@ export const POST = async (request: Request) => {
 
   const source = await prisma.sourceVideo.findUnique({
     where: { id: parsed.data.sourceVideoId },
+    include: { transcriptSegments: { take: 1 } },
   });
   if (source === null) {
     return apiError("NOT_FOUND", "Source not found", 404);
+  }
+
+  if (source.workspaceId !== parsed.data.workspaceId) {
+    return apiError("FORBIDDEN", "Source not in workspace", 403);
+  }
+
+  if (source.status === SourceStatus.analyzing) {
+    return apiError(
+      "VALIDATION_ERROR",
+      "Clip generation already in progress",
+      409,
+    );
+  }
+
+  if (
+    source.status !== SourceStatus.ready &&
+    source.status !== SourceStatus.failed
+  ) {
+    return apiError(
+      "VALIDATION_ERROR",
+      `Source must be ready before generating clips (current: ${source.status})`,
+      400,
+    );
+  }
+
+  if (source.transcriptSegments.length === 0) {
+    return apiError(
+      "VALIDATION_ERROR",
+      "Transcript required before generating clips",
+      400,
+    );
   }
 
   const job = await enqueueJob({
     workspaceId: parsed.data.workspaceId,
     type: "ai.score_clips",
     sourceVideoId: source.id,
-    payload: { clipCount: parsed.data.clipCount },
+    payload: {
+      sourceVideoId: source.id,
+      workspaceId: parsed.data.workspaceId,
+      clipCount: parsed.data.clipCount,
+    },
   });
 
   return apiSuccess({ job, message: "Candidate generation queued" }, 202);

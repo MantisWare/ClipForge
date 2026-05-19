@@ -11,6 +11,12 @@ export const JOB_TYPES = [
   "publish.youtube",
   "publish.tiktok",
   "publish.instagram",
+  "batch.render",
+  "publish.scheduled",
+  "analytics.rollup",
+  "render.apply_overlays",
+  "ai.suggest_overlays",
+  "overlay.validate_urls",
 ] as const;
 
 export type JobTypeName = (typeof JOB_TYPES)[number];
@@ -29,6 +35,12 @@ export const JOB_TYPE_TO_PRISMA: Record<
   | "publish_youtube"
   | "publish_tiktok"
   | "publish_instagram"
+  | "batch_render"
+  | "publish_scheduled"
+  | "analytics_rollup"
+  | "render_apply_overlays"
+  | "ai_suggest_overlays"
+  | "overlay_validate_urls"
 > = {
   "source.validate": "source_validate",
   "source.import": "source_import",
@@ -42,6 +54,12 @@ export const JOB_TYPE_TO_PRISMA: Record<
   "publish.youtube": "publish_youtube",
   "publish.tiktok": "publish_tiktok",
   "publish.instagram": "publish_instagram",
+  "batch.render": "batch_render",
+  "publish.scheduled": "publish_scheduled",
+  "analytics.rollup": "analytics_rollup",
+  "render.apply_overlays": "render_apply_overlays",
+  "ai.suggest_overlays": "ai_suggest_overlays",
+  "overlay.validate_urls": "overlay_validate_urls",
 };
 
 export const PRISMA_TO_JOB_TYPE: Record<string, JobTypeName> = Object.fromEntries(

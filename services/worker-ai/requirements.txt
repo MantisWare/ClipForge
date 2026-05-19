@@ -2,5 +2,6 @@ fastapi>=0.115.0
 uvicorn[standard]>=0.34.0
 redis>=5.2.0
 httpx>=0.28.0
-# Phase 3+: faster-whisper
-# Phase 4+: openai (or alternative LLM client)
+faster-whisper>=1.1.0
+pydantic>=2.10.0
+openai>=1.60.0

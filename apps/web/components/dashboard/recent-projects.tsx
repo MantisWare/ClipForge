@@ -1,5 +1,6 @@
 "use client";
 
+import { SourceStatusBadge } from "@/components/sources/source-status-badge";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +13,14 @@ type SourceRow = {
   createdAt: string;
 };
 
+const ACTIVE_STATUSES = new Set([
+  "pending",
+  "importing",
+  "imported",
+  "transcribing",
+  "analyzing",
+]);
+
 type Props = {
   workspaceId: string;
 };
@@ -23,6 +32,11 @@ export const RecentProjects = ({ workspaceId }: Props) => {
       const res = await fetch(`/api/sources?workspaceId=${workspaceId}`);
       const json = (await res.json()) as { data?: SourceRow[] };
       return json.data ?? [];
+    },
+    refetchInterval: (query) => {
+      const sources = query.state.data ?? [];
+      const hasActive = sources.some((s) => ACTIVE_STATUSES.has(s.status));
+      return hasActive ? 3000 : false;
     },
   });
 
@@ -43,13 +57,14 @@ export const RecentProjects = ({ workspaceId }: Props) => {
           <li key={source.id}>
             <Link
               href={`/projects/${source.id}`}
-              className="block rounded-lg border border-border bg-panel-2 px-3 py-2 text-sm hover:border-accent"
+              className="block rounded-lg border border-border bg-panel-2 px-3 py-2 text-sm hover:border-accent-cyan/50"
             >
               <span className="font-medium">
                 {source.title ?? "Untitled source"}
               </span>
-              <span className="mt-1 block text-xs text-muted">
-                {source.status} · {new Date(source.createdAt).toLocaleDateString()}
+              <span className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+                <SourceStatusBadge status={source.status} />
+                {new Date(source.createdAt).toLocaleDateString()}
               </span>
             </Link>
           </li>

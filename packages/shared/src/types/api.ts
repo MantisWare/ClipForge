@@ -5,7 +5,8 @@ export type ApiErrorCode =
   | "VALIDATION_ERROR"
   | "INTERNAL_ERROR"
   | "NOT_IMPLEMENTED"
-  | "WORKSPACE_REQUIRED";
+  | "WORKSPACE_REQUIRED"
+  | "QUOTA_EXCEEDED";
 
 export type ApiError = {
   code: ApiErrorCode;

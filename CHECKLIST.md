@@ -1,6 +1,6 @@
 # ClipForge Implementation Checklist
 
-Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](docs/clipforge_ai_shorts_platform_cursor_spec.md) for full requirements.
+Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](docs/clipforge_ai_shorts_platform_cursor_spec.md) for full requirements. Phase 9 implementation notes: [docs/phase-9-monetization-overlays.md](docs/phase-9-monetization-overlays.md).
 
 ---
 
@@ -41,126 +41,215 @@ Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](
 ## Phase 1 — Foundation
 
 ### Auth & workspace
-- [ ] Production-ready auth providers (email magic link / Google)
-- [ ] Workspace switcher in dashboard header
-- [ ] Workspace CRUD UI
-- [ ] Workspace membership & roles enforcement
+- [x] Production-ready auth providers (email magic link / Google)
+- [x] Workspace switcher in dashboard header
+- [x] Workspace CRUD UI
+- [x] Workspace membership & roles enforcement
 
 ### Dashboard
-- [ ] Real-time job status (SSE or polling improvements)
-- [ ] Connected account status summary on dashboard
-- [ ] Scheduled posts panel (stub data → real)
+- [x] Real-time job status (adaptive polling)
+- [x] Connected account status summary on dashboard
+- [x] Scheduled posts panel (live calendar feed)
 
 ### Queue
-- [ ] Node or Python BullMQ worker consumer
-- [ ] Job status transitions (`running` → `completed` / `failed`)
-- [ ] Retry UI for failed jobs
+- [x] Node BullMQ worker consumer (`apps/worker`)
+- [x] Job status transitions (`running` → `completed` / `failed`)
+- [x] Retry UI for failed jobs
+
+### Brand
+- [x] Logo + dark-first theme (pink/cyan/orange on black)
 
 ### Database
-- [ ] Seed script integrated into dev onboarding docs
-- [ ] Migration workflow in CI
+- [x] Seed script integrated into dev onboarding docs
+- [x] Migration workflow in CI
+
+> **Auto-updated:** Phase 1 foundation completed 2026-05-18. Dashboard scheduled posts panel wired to `/api/calendar` on 2026-05-18.
 
 ---
 
 ## Phase 2 — Source import
 
 ### API & workers
-- [ ] YouTube metadata (Data API v3)
-- [ ] Direct MP4/MOV URL handling
-- [ ] Multipart file upload + MinIO storage
-- [ ] Vimeo URL parser (nice-to-have)
-- [ ] `worker-video` `import_video` implementation
+- [x] YouTube metadata (Data API v3)
+- [x] Direct MP4/MOV URL handling
+- [x] Presigned file upload + MinIO storage (`upload/presign`, `upload/complete`)
+- [x] Vimeo URL parser (validate + direct download)
+- [x] `apps/worker` `source.import` (yt-dlp, ffprobe, S3 upload)
 
 ### UI
-- [ ] Source detail page with video player (signed URL)
-- [ ] Import status progression on source card
-- [ ] New Project multi-step wizard (source step)
+- [x] Source detail page with video player (signed URL)
+- [x] Import status progression on source card
+- [x] New Project wizard — source step (`/projects/new`)
+
+> **Auto-updated by Cursor:** Phase 2 source import completed 2026-05-18 (Node worker + presigned uploads).
 
 ### Compliance (deferred — pre-launch)
 - [ ] Rights confirmation modal before third-party import
 - [ ] Block import without rights confirmation
-- [ ] Warn on risky source patterns
+- [x] Warn on risky source patterns (validate API + import UI heuristics)
 
 ---
 
 ## Phase 3 — Transcription
 
-- [ ] Audio extraction worker (`media.extract_audio`)
-- [ ] Faster-Whisper transcription (`media.transcribe`)
-- [ ] `TranscriptSegment` + `TranscriptWord` persistence
-- [ ] Transcript viewer synced to playback
-- [ ] Language detection
+- [x] Audio extraction worker (`media.extract_audio`)
+- [x] Faster-Whisper transcription (`media.transcribe`)
+- [x] `TranscriptSegment` + `TranscriptWord` persistence
+- [x] Transcript viewer synced to playback
+- [x] Language detection
+
+> **Auto-updated by Cursor:** Phase 3 transcription completed 2026-05-18 (Node extract + worker-ai Faster-Whisper + transcript UI).
 
 ---
 
 ## Phase 4 — AI clip candidates
 
-- [ ] Sliding window generator (30 / 45 / 60s)
-- [ ] Heuristic scoring pass
-- [ ] LLM scoring with strict JSON schema
-- [ ] Generate 5–10 candidates per source
-- [ ] Clip review UI (scores, reasons, approve/reject)
-- [ ] Editable hook, title, caption, hashtags
+- [x] Sliding window generator (30 / 45 / 60s)
+- [x] Heuristic scoring pass
+- [x] LLM scoring with strict JSON schema
+- [x] Generate 5–10 candidates per source
+- [x] Clip review UI (scores, reasons, approve/reject)
+- [x] Editable hook, title, caption, hashtags
+
+> **Auto-updated by Cursor:** Phase 4 clip candidates completed 2026-05-18 (heuristic + OpenAI via worker-ai, review UI on project page).
 
 ---
 
 ## Phase 5 — Rendering
 
-- [ ] FFmpeg vertical 1080×1920 preset
-- [ ] Smart crop modes (center, face — phased)
-- [ ] Burned-in captions + safe areas
-- [ ] Hook overlay (2–3s)
-- [ ] Render preview page
-- [ ] Download rendered MP4
+- [x] FFmpeg vertical 1080×1920 preset
+- [x] Smart crop modes (center crop MVP; face tracking deferred)
+- [x] Burned-in captions + safe areas
+- [x] Hook overlay (2–3s)
+- [x] Render preview page
+- [x] Download rendered MP4
+
+> **Auto-updated by Cursor:** Phase 5 rendering completed 2026-05-18 (Node FFmpeg + MinIO).
 
 ---
 
 ## Phase 6 — Publishing
 
-- [ ] Connected accounts OAuth (YouTube)
-- [ ] YouTube Shorts upload (`videos.insert`)
-- [ ] TikTok connector + `PRIVATE_ONLY` / `REQUIRES_AUDIT` flags
-- [ ] Instagram Graph API container flow
-- [ ] Export fallback for unaudited apps
-- [ ] Publish job retry + status UI
+- [x] Connected accounts OAuth (YouTube)
+- [x] YouTube Shorts upload (`videos.insert`)
+- [x] TikTok connector + `PRIVATE_ONLY` / `REQUIRES_AUDIT` flags
+- [x] Instagram export fallback (Graph API container deferred)
+- [x] Export fallback for unaudited apps
+- [x] Publish from render preview UI
+
+> **Auto-updated by Cursor:** Phase 6 publishing MVP completed 2026-05-18.
 
 ---
 
 ## Phase 7 — Discovery
 
-- [ ] YouTube most-popular API integration
-- [ ] Keyword search + filters (region, category)
-- [ ] Discovery cards with rights badges
-- [ ] Analyze / watchlist actions
-- [ ] Rights warning on every third-party card
+- [x] YouTube most-popular API integration
+- [x] Keyword search + filters (region, category)
+- [x] Discovery cards with rights badges
+- [x] Analyze action (import to project)
+- [x] Rights warning on every third-party card
+
+> **Auto-updated by Cursor:** Phase 7 discovery completed 2026-05-18.
 
 ---
 
 ## Phase 8 — Polish
 
-- [ ] Brand kits
-- [ ] Caption style presets
-- [ ] Content calendar
-- [ ] Batch clip generation
-- [ ] Analytics basics
-- [ ] Admin tools & plan quotas
-- [ ] Stripe billing (optional)
+> **Open source / free:** No Stripe or paid billing. Optional env-based quotas only. Full spec: [docs/phase-8-polish.md](docs/phase-8-polish.md).
+
+- [x] Brand kits
+- [x] Caption style presets
+- [x] Content calendar
+- [x] Batch clip generation
+- [x] Analytics basics
+- [x] Admin tools & env quotas (no payment provider) + `/admin` UI
+- [x] Projects list page (replace placeholder)
+
+> **Auto-updated by Cursor:** Phase 8 implemented on 2026-05-18 (brand kits, captions, calendar, batch, analytics, admin, projects list). Post–Phase 7 review fixes: render approval order, clip `rendered` status on success only, FFmpeg trim fallback, publish `ready` validation, YouTube token refresh, editor role on mutations, account disconnect API.
+
+---
+
+## Phase 9 — Monetization & interactive overlays
+
+> **Depends on:** Phase 5 (render pipeline), Phase 8 (brand kits). Full spec: [docs/phase-9-monetization-overlays.md](docs/phase-9-monetization-overlays.md).
+
+### Data model & catalog
+- [x] `OverlayTemplate` workspace library (CTA card, product pin, end slate, QR, lower-third)
+- [x] `ProductLink` catalog (title, URL, image, price, affiliate network, disclosure text)
+- [x] `ClipOverlay` instances bound to `ClipCandidate` with timeline windows
+- [x] Overlay zones respecting caption safe areas (spec §14.3)
+- [x] Version history (`ClipOverlayRevision`) on save
+
+### Overlay types (MVP of phase)
+- [x] **End slate** — headline + CTA via FFmpeg drawtext
+- [x] **Product pin** — title + Shop chip (S3 image presign on catalog)
+- [x] **Affiliate lower-third** — disclosure bar
+- [x] **Sponsored segment marker** — top partnership bar
+- [x] **Promo code flash** — centered code text (copy in editor via style field)
+
+### Editor UX (smooth creator flow)
+- [x] Overlay timeline on `/projects/[sourceId]/clips/[clipId]` (ms timing + save)
+- [x] Live preview canvas with safe-area guides
+- [x] One-click “Apply brand kit defaults” to all overlays on a clip
+- [x] Builtin presets seeded (Minimal, Bold CTA, Product focus, Podcast sponsor)
+- [x] Bulk apply overlay pack (`POST /api/sources/[id]/overlays/apply-pack`)
+- [x] Keyboard nudge (position) + duplicate overlay to sibling clips
+
+### AI-assisted placement
+- [x] Detect product mentions in transcript → suggest `ProductLink` matches (`ai.suggest_overlays`)
+- [x] Suggest overlay start/end from transcript segments
+- [x] Score overlay density (warn if >2 simultaneous or covers captions)
+- [x] Generate CTA copy variants aligned with hook tone (user picks one)
+
+### Render pipeline
+- [x] Chained `render.clip` → `render.apply_overlays` (Node worker / FFmpeg)
+- [x] Image prefetch in overlay pass (product `imageStorageKey` burned via FFmpeg movie filter)
+- [x] Font/color from default brand kit on overlay pass
+- [x] Export clean (`clean.mp4`) alongside monetized (`output.mp4`)
+- [x] Render manifest `overlays.json` in S3
+
+### Compliance & trust
+- [x] Workspace-level default disclosure text + locale
+- [x] Require disclosure on affiliate/sponsored overlays before render (when configured)
+- [x] FTC-style checkbox on publish preview for monetized renders
+- [x] Platform notes in publish UI (YouTube / TikTok / Instagram)
+- [x] HTTPS URL validation + optional domain allowlist before render
+
+### Publishing & metadata
+- [x] Tracked links in YouTube description (UTM + workspace id)
+- [x] Links block auto-generated from product overlays
+- [ ] YouTube: `shopping` / product tag fields where API supports
+- [x] Export package API (`overlays.json` + signed MP4 URLs; `linksText` in response)
+
+### Analytics (phase tail)
+- [x] Click/impression events (`OverlayEvent` + `/r/[slug]`)
+- [x] Overlay analytics API (`GET /api/analytics/overlays`)
+- [x] `RenderedClip.experimentGroup` field for future A/B (no UI yet)
+
+### Integrations (later)
+- [x] Import product feed (CSV via `POST /api/product-links/import`)
+- [x] Webhook on render complete (`Workspace.renderWebhookUrl`)
+- [x] API: attach overlay pack (`POST /api/clips/[id]/overlay-pack`)
+
+> **Auto-updated by Cursor:** Phase 9 polish completed 2026-05-18 — brand kit apply, keyboard nudge, CTA variants API, product image burn-in, admin UI, scheduled posts panel, source risk warnings. Deferred: YouTube shopping API, rights confirmation modal (pre-launch).
 
 ---
 
 ## MVP acceptance (from spec §22)
 
-- [ ] User can sign in
-- [ ] User can create a workspace
-- [ ] User can paste URL or upload video
+- [x] User can sign in
+- [x] User can create a workspace
+- [x] User can paste URL or upload video
 - [ ] User confirms rights (deferred to pre-launch)
-- [ ] Metadata extraction works
-- [ ] Transcription works
-- [ ] 5–10 candidate clips generated
-- [ ] Approve/reject candidates
-- [ ] Vertical clips rendered with captions
-- [ ] Download clips
-- [ ] YouTube Shorts upload attempted
-- [ ] TikTok/Instagram scaffolds + export fallback
-- [ ] Discovery page with YouTube data
-- [ ] All heavy ops queued & status-tracked
+- [x] Metadata extraction works
+- [x] Transcription works
+- [x] 5–10 candidate clips generated
+- [x] Approve/reject candidates
+- [x] Vertical clips rendered with captions
+- [x] Download clips (`GET /api/rendered/[id]/download`)
+- [x] YouTube Shorts upload attempted (OAuth + `publish.youtube` worker)
+- [x] TikTok/Instagram scaffolds + export fallback
+- [x] Discovery page with YouTube data
+- [x] All heavy ops queued & status-tracked (BullMQ + job APIs)
+
+> **Auto-updated by Cursor:** Synced MVP acceptance with Phases 1–7 implementation on 2026-05-18.

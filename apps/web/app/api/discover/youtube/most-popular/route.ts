@@ -1,7 +1,18 @@
-import { apiSuccess } from "@/lib/api";
-import { discoverQuerySchema, RIGHTS_WARNING } from "@clipforge/shared";
+import { apiError, apiSuccess } from "@/lib/api";
+import { requireUser } from "@/lib/api-auth";
+import {
+  discoverQuerySchema,
+  fetchYouTubeMostPopular,
+  getImportConfig,
+  RIGHTS_WARNING,
+} from "@clipforge/shared";
 
 export const GET = async (request: Request) => {
+  const authResult = await requireUser();
+  if ("error" in authResult) {
+    return authResult.error;
+  }
+
   const { searchParams } = new URL(request.url);
   const parsed = discoverQuerySchema.safeParse({
     region: searchParams.get("region") ?? "US",
@@ -9,24 +20,34 @@ export const GET = async (request: Request) => {
     maxResults: searchParams.get("maxResults") ?? 20,
   });
 
-  const query = parsed.success ? parsed.data : { region: "US", maxResults: 20 };
+  if (!parsed.success) {
+    return apiError("VALIDATION_ERROR", parsed.error.message, 400);
+  }
 
-  const stubItems = Array.from({ length: Math.min(query.maxResults, 5) }, (_, i) => ({
-    id: `stub-${i + 1}`,
-    title: `Popular video example ${i + 1}`,
-    channel: "Example Channel",
-    views: 1_000_000 - i * 100_000,
-    duration: "12:34",
-    publishedAt: new Date().toISOString(),
-    thumbnailUrl: null,
-    rightsStatus: "permission_required" as const,
-  }));
+  const config = getImportConfig();
+  if (config.youtubeApiKey === undefined) {
+    return apiError(
+      "NOT_IMPLEMENTED",
+      "YOUTUBE_API_KEY is required for discovery",
+      503,
+    );
+  }
 
-  return apiSuccess({
-    items: stubItems,
-    region: query.region,
-    rightsWarning: RIGHTS_WARNING,
-    stub: true,
-    message: "Connect YOUTUBE_API_KEY in Phase 7 for live data",
-  });
+  try {
+    const items = await fetchYouTubeMostPopular(config.youtubeApiKey, {
+      region: parsed.data.region,
+      categoryId: parsed.data.category,
+      maxResults: parsed.data.maxResults,
+    });
+
+    return apiSuccess({
+      items,
+      region: parsed.data.region,
+      rightsWarning: RIGHTS_WARNING,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "YouTube mostPopular failed";
+    return apiError("INTERNAL_ERROR", message, 500);
+  }
 };

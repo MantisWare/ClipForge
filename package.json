@@ -2,7 +2,9 @@
   "name": "clipforge",
   "private": true,
   "scripts": {
-    "dev": "turbo dev",
+    "dev": "turbo dev --filter=@clipforge/web --filter=@clipforge/worker",
+    "dev:web": "turbo dev --filter=@clipforge/web",
+    "dev:worker": "turbo dev --filter=@clipforge/worker",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "db:generate": "turbo db:generate",

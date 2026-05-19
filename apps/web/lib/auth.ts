@@ -1,8 +1,12 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@clipforge/database";
 import NextAuth from "next-auth";
+import type { NextAuthConfig } from "next-auth";
 import Google from "next-auth/providers/google";
+import Resend from "next-auth/providers/resend";
 import Credentials from "next-auth/providers/credentials";
+
+const isDev = process.env.NODE_ENV === "development";
 
 const googleId = process.env.AUTH_GOOGLE_ID;
 const googleSecret = process.env.AUTH_GOOGLE_SECRET;
@@ -12,21 +16,54 @@ const hasGoogle =
   googleSecret !== undefined &&
   googleSecret !== "";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
-  pages: {
-    signIn: "/sign-in",
-  },
-  providers: [
-    ...(hasGoogle
-      ? [
-          Google({
-            clientId: googleId,
-            clientSecret: googleSecret,
-          }),
-        ]
-      : []),
+const resendKey = process.env.AUTH_RESEND_KEY;
+const emailFrom = process.env.EMAIL_FROM;
+const hasResend =
+  resendKey !== undefined &&
+  resendKey !== "" &&
+  emailFrom !== undefined &&
+  emailFrom !== "";
+
+const ensureDefaultWorkspace = async (userId: string) => {
+  const existing = await prisma.workspace.findFirst({
+    where: { ownerId: userId },
+  });
+  if (existing !== null) {
+    return existing;
+  }
+  return prisma.workspace.create({
+    data: {
+      name: "My Workspace",
+      ownerId: userId,
+      members: {
+        create: { userId, role: "owner" },
+      },
+    },
+  });
+};
+
+const providers: NextAuthConfig["providers"] = [];
+
+if (hasResend) {
+  providers.push(
+    Resend({
+      apiKey: resendKey,
+      from: emailFrom,
+    }),
+  );
+}
+
+if (hasGoogle) {
+  providers.push(
+    Google({
+      clientId: googleId,
+      clientSecret: googleSecret,
+    }),
+  );
+}
+
+if (isDev) {
+  providers.push(
     Credentials({
       name: "Demo",
       credentials: {
@@ -47,6 +84,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
         });
 
+        await ensureDefaultWorkspace(user.id);
+
         return {
           id: user.id,
           email: user.email,
@@ -55,7 +94,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
-  ],
+  );
+}
+
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  session: { strategy: isDev ? "jwt" : "database" },
+  pages: {
+    signIn: "/sign-in",
+    verifyRequest: "/verify-request",
+  },
+  providers,
+  events: {
+    createUser: async ({ user }) => {
+      if (user.id !== undefined) {
+        await ensureDefaultWorkspace(user.id);
+      }
+    },
+  },
   callbacks: {
     jwt: async ({ token, user }) => {
       if (user?.id !== undefined) {
@@ -63,9 +119,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return token;
     },
-    session: async ({ session, token }) => {
-      if (token.sub !== undefined && session.user !== undefined) {
-        session.user.id = token.sub;
+    session: async ({ session, token, user }) => {
+      if (session.user !== undefined) {
+        if (isDev && token.sub !== undefined) {
+          session.user.id = token.sub;
+        } else if (user?.id !== undefined) {
+          session.user.id = user.id;
+        }
       }
       return session;
     },

@@ -1,4 +1,4 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+import { ProjectDetailClient } from "@/components/sources/project-detail-client";
 
 export default async function ProjectDetailPage({
   params,
@@ -6,10 +6,5 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return (
-    <PlaceholderPage
-      title={`Project ${id}`}
-      description="Source preview, clip review, and transcript editor (Phase 4)."
-    />
-  );
+  return <ProjectDetailClient sourceId={id} />;
 }

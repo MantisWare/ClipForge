@@ -25,8 +25,12 @@ export const GET = async (
   const segments = await prisma.transcriptSegment.findMany({
     where: { sourceVideoId: id },
     orderBy: { startMs: "asc" },
-    include: { words: true },
+    include: { words: { orderBy: { startMs: "asc" } } },
   });
 
-  return apiSuccess({ segments, stub: segments.length === 0 });
+  return apiSuccess({
+    language: source.language,
+    status: source.status,
+    segments,
+  });
 };

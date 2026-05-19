@@ -74,16 +74,24 @@ model Workspace {
   name      String
   ownerId   String
   plan      WorkspacePlan @default(free)
+  renderWebhookUrl String? @db.Text
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  owner            User              @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  members          WorkspaceMember[]
-  sourceVideos     SourceVideo[]
-  renderedClips    RenderedClip[]
-  connectedAccounts ConnectedAccount[]
-  publishJobs      PublishJob[]
-  jobs             Job[]
+  owner              User                 @relation("WorkspaceOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members            WorkspaceMember[]
+  sourceVideos       SourceVideo[]
+  renderedClips      RenderedClip[]
+  connectedAccounts  ConnectedAccount[]
+  publishJobs        PublishJob[]
+  jobs               Job[]
+  brandKits          BrandKit[]
+  captionStyles      CaptionStylePreset[]
+  scheduledPublishes ScheduledPublish[]
+  dailyStats         WorkspaceDailyStats[]
+  overlayTemplates   OverlayTemplate[]
+  productLinks       ProductLink[]
+  overlaySettings    WorkspaceOverlaySettings?
 
   @@index([ownerId])
 }
@@ -229,9 +237,16 @@ model ClipCandidate {
 
   sourceVideo   SourceVideo    @relation(fields: [sourceVideoId], references: [id], onDelete: Cascade)
   renderedClips RenderedClip[]
+  clipOverlays  ClipOverlay[]
+  overlayRevisions ClipOverlayRevision[]
 
   @@index([sourceVideoId])
   @@index([status])
+}
+
+enum RenderVariant {
+  clean
+  monetized
 }
 
 enum RenderStatus {
@@ -247,22 +262,260 @@ model RenderedClip {
   workspaceId     String
   outputUrl       String?
   storageKey      String?
+  cleanStorageKey     String?
+  overlaysManifestKey String?
   thumbnailUrl    String?
   width           Int          @default(1080)
   height          Int          @default(1920)
   durationSeconds Float?
   renderPreset    String       @default("vertical_1080x1920")
   captionStyleId  String?
+  brandKitId      String?
+  renderVariant   RenderVariant @default(clean)
+  experimentGroup String?
   status          RenderStatus @default(queued)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
-  clipCandidate ClipCandidate @relation(fields: [clipCandidateId], references: [id], onDelete: Cascade)
-  workspace     Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  publishJobs   PublishJob[]
+  clipCandidate  ClipCandidate         @relation(fields: [clipCandidateId], references: [id], onDelete: Cascade)
+  workspace      Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  captionStyle   CaptionStylePreset?   @relation(fields: [captionStyleId], references: [id], onDelete: SetNull)
+  brandKit       BrandKit?             @relation(fields: [brandKitId], references: [id], onDelete: SetNull)
+  publishJobs    PublishJob[]
+  scheduledPublishes ScheduledPublish[]
+  overlayLinkSlugs OverlayLinkSlug[]
 
   @@index([workspaceId])
   @@index([clipCandidateId])
+  @@index([captionStyleId])
+  @@index([brandKitId])
+}
+
+// --- Brand kits & caption presets (Phase 8) ---
+
+model BrandKit {
+  id               String   @id @default(cuid())
+  workspaceId      String
+  name             String
+  isDefault        Boolean  @default(false)
+  logoStorageKey   String?
+  primaryColor     String   @default("#FFFFFF")
+  secondaryColor   String?
+  fontFamily       String   @default("Inter")
+  hookFontSize     Int      @default(48)
+  overlayDefaults  Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace     Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  captionStyles CaptionStylePreset[]
+  renderedClips RenderedClip[]
+
+  @@index([workspaceId])
+}
+
+model CaptionStylePreset {
+  id          String   @id @default(cuid())
+  workspaceId String
+  brandKitId  String?
+  name        String
+  presetKey   String
+  assTemplate Json     @default("{}")
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  brandKit      BrandKit?      @relation(fields: [brandKitId], references: [id], onDelete: SetNull)
+  renderedClips RenderedClip[]
+
+  @@index([workspaceId])
+  @@index([brandKitId])
+}
+
+enum ScheduledPublishStatus {
+  scheduled
+  published
+  cancelled
+  failed
+}
+
+model ScheduledPublish {
+  id                 String                 @id @default(cuid())
+  workspaceId        String
+  renderedClipId     String
+  connectedAccountId String?
+  platform           Platform
+  title              String?
+  caption            String?                @db.Text
+  hashtags           String[]               @default([])
+  visibility         PublishVisibility      @default(public)
+  scheduledFor       DateTime
+  status             ScheduledPublishStatus @default(scheduled)
+  publishJobId       String?
+  errorMessage       String?                @db.Text
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  renderedClip   RenderedClip   @relation(fields: [renderedClipId], references: [id], onDelete: Cascade)
+  connectedAccount ConnectedAccount? @relation(fields: [connectedAccountId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([scheduledFor])
+  @@index([status])
+}
+
+model WorkspaceDailyStats {
+  workspaceId       String
+  date              DateTime @db.Date
+  sourcesImported   Int      @default(0)
+  clipsGenerated    Int      @default(0)
+  clipsApproved     Int      @default(0)
+  clipsRendered     Int      @default(0)
+  publishAttempts   Int      @default(0)
+  publishSuccess    Int      @default(0)
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, date])
+}
+
+// --- Phase 9: Monetization overlays ---
+
+enum OverlayType {
+  end_slate
+  product_pin
+  affiliate_bar
+  sponsor_segment
+  promo_code
+  qr_card
+  image
+}
+
+enum OverlayCompliance {
+  none
+  affiliate
+  sponsored
+  ad
+}
+
+enum OverlayEventType {
+  impression
+  click
+}
+
+model WorkspaceOverlaySettings {
+  workspaceId              String   @id
+  defaultDisclosureText    String?  @db.Text
+  defaultLocale            String   @default("en-US")
+  urlAllowlist             String[] @default([])
+  requireDisclosureOnExport Boolean @default(true)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model OverlayTemplate {
+  id          String      @id @default(cuid())
+  workspaceId String
+  name        String
+  overlayType OverlayType
+  config      Json        @default("{}")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clipOverlays ClipOverlay[]
+
+  @@index([workspaceId])
+}
+
+model ProductLink {
+  id               String   @id @default(cuid())
+  workspaceId      String
+  title            String
+  url              String
+  imageStorageKey  String?
+  imageUrl         String?
+  priceLabel       String?
+  affiliateNetwork String?
+  disclosureText   String?  @db.Text
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clipOverlays   ClipOverlay[]
+  overlayLinkSlugs OverlayLinkSlug[]
+
+  @@index([workspaceId])
+}
+
+model ClipOverlay {
+  id              String            @id @default(cuid())
+  clipCandidateId String
+  overlayType     OverlayType
+  templateId      String?
+  productLinkId   String?
+  startMs         Int
+  endMs           Int
+  position        Json              @default("{}")
+  style           Json              @default("{}")
+  compliance      OverlayCompliance @default(none)
+  sortOrder       Int               @default(0)
+  isDraft         Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  clipCandidate ClipCandidate    @relation(fields: [clipCandidateId], references: [id], onDelete: Cascade)
+  template      OverlayTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  productLink   ProductLink?     @relation(fields: [productLinkId], references: [id], onDelete: SetNull)
+  linkSlugs     OverlayLinkSlug[]
+
+  @@index([clipCandidateId])
+}
+
+model ClipOverlayRevision {
+  id              String   @id @default(cuid())
+  clipCandidateId String
+  snapshot        Json
+  createdAt       DateTime @default(now())
+
+  clipCandidate ClipCandidate @relation(fields: [clipCandidateId], references: [id], onDelete: Cascade)
+
+  @@index([clipCandidateId])
+}
+
+model OverlayLinkSlug {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  workspaceId     String
+  productLinkId   String?
+  renderedClipId  String?
+  clipOverlayId   String?
+  targetUrl       String
+  createdAt       DateTime @default(now())
+
+  productLink  ProductLink?  @relation(fields: [productLinkId], references: [id], onDelete: SetNull)
+  renderedClip RenderedClip? @relation(fields: [renderedClipId], references: [id], onDelete: SetNull)
+  clipOverlay  ClipOverlay?  @relation(fields: [clipOverlayId], references: [id], onDelete: SetNull)
+  events       OverlayEvent[]
+
+  @@index([workspaceId])
+}
+
+model OverlayEvent {
+  id        String           @id @default(cuid())
+  slugId    String
+  type      OverlayEventType
+  createdAt DateTime         @default(now())
+
+  slug OverlayLinkSlug @relation(fields: [slugId], references: [id], onDelete: Cascade)
+
+  @@index([slugId])
+  @@index([createdAt])
 }
 
 // --- Connected accounts ---
@@ -295,8 +548,9 @@ model ConnectedAccount {
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 
-  workspace   Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  publishJobs PublishJob[]
+  workspace          Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  publishJobs        PublishJob[]
+  scheduledPublishes ScheduledPublish[]
 
   @@index([workspaceId])
   @@unique([workspaceId, platform, externalAccountId])
@@ -362,6 +616,12 @@ enum JobType {
   publish_youtube
   publish_tiktok
   publish_instagram
+  batch_render
+  publish_scheduled
+  analytics_rollup
+  render_apply_overlays
+  ai_suggest_overlays
+  overlay_validate_urls
 }
 
 enum JobStatus {

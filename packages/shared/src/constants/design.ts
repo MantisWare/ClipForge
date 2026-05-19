@@ -1,13 +1,16 @@
 export const palette = {
-  background: "#0B0F17",
-  panel: "#111827",
-  panel2: "#172033",
-  border: "#263244",
-  text: "#F8FAFC",
+  background: "#000000",
+  panel: "#0f0a14",
+  panel2: "#1a1028",
+  border: "#2d1f4e",
+  text: "#FFFFFF",
   muted: "#94A3B8",
-  accent: "#F97316",
+  accentPink: "#FF3385",
+  accentOrange: "#FF8C00",
+  accentCyan: "#00E5FF",
+  accentPurple: "#4B0082",
   success: "#22C55E",
-  warning: "#FACC15",
+  warning: "#FFD700",
   danger: "#EF4444",
 } as const;
 

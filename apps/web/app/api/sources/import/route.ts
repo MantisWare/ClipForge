@@ -1,5 +1,6 @@
 import { apiError, apiSuccess, parseJsonBody } from "@/lib/api";
-import { requireUser, requireWorkspace } from "@/lib/api-auth";
+import { requireUser, requireWorkspaceEditor } from "@/lib/api-auth";
+import { assertSourceQuota } from "@/lib/quotas";
 import { enqueueJob } from "@/lib/queue";
 import { prisma, SourceStatus, SourceType } from "@clipforge/database";
 import { importSourceSchema, parseSourceUrl } from "@clipforge/shared";
@@ -16,12 +17,17 @@ export const POST = async (request: Request) => {
     return apiError("VALIDATION_ERROR", parsed.error.message, 400, parsed.error.flatten());
   }
 
-  const access = await requireWorkspace(
+  const access = await requireWorkspaceEditor(
     authResult.userId,
     parsed.data.workspaceId,
   );
   if ("error" in access) {
     return access.error;
+  }
+
+  const quota = await assertSourceQuota(parsed.data.workspaceId);
+  if ("error" in quota) {
+    return quota.error;
   }
 
   const detected = parseSourceUrl(parsed.data.sourceUrl);
@@ -50,7 +56,10 @@ export const POST = async (request: Request) => {
     workspaceId: parsed.data.workspaceId,
     type: "source.import",
     sourceVideoId: source.id,
-    payload: { sourceVideoId: source.id },
+    payload: {
+      sourceVideoId: source.id,
+      workspaceId: parsed.data.workspaceId,
+    },
   });
 
   return apiSuccess({ source, job }, 201);

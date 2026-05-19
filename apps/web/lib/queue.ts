@@ -85,3 +85,68 @@ export const enqueueJob = async ({
 
   return jobRecord;
 };
+
+export const enqueueJobDelayed = async (
+  input: EnqueueJobInput,
+  delayMs: number,
+) => {
+  const prismaType = JOB_TYPE_TO_PRISMA[input.type] as JobType;
+
+  const jobRecord = await prisma.job.create({
+    data: {
+      workspaceId: input.workspaceId,
+      sourceVideoId: input.sourceVideoId,
+      type: prismaType,
+      status: JobStatus.queued,
+      payload: (input.payload ?? {}) as Prisma.InputJsonValue,
+    },
+  });
+
+  const queue = getQueue(CLIPFORGE_QUEUE);
+  const bullJob = await queue.add(
+    input.type,
+    {
+      jobId: jobRecord.id,
+      workspaceId: input.workspaceId,
+      sourceVideoId: input.sourceVideoId,
+      ...input.payload,
+    },
+    {
+      jobId: jobRecord.id,
+      delay: delayMs,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5000 },
+    },
+  );
+
+  await prisma.job.update({
+    where: { id: jobRecord.id },
+    data: { bullJobId: bullJob.id },
+  });
+
+  return jobRecord;
+};
+
+export const requeueExistingJob = async (
+  jobId: string,
+  type: JobTypeName,
+  payload: Record<string, unknown>,
+) => {
+  const queue = getQueue(CLIPFORGE_QUEUE);
+  const bullJob = await queue.add(
+    type,
+    { jobId, ...payload },
+    {
+      jobId,
+      attempts: 3,
+      backoff: { type: "exponential", delay: 5000 },
+    },
+  );
+
+  await prisma.job.update({
+    where: { id: jobId },
+    data: { bullJobId: bullJob.id },
+  });
+
+  return prisma.job.findUniqueOrThrow({ where: { id: jobId } });
+};
