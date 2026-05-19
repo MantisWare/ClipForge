@@ -46,6 +46,7 @@ flowchart TB
 ```txt
 ClipForge/
 ├── apps/web/              # Next.js app (UI + /app/api)
+├── apps/desktop/          # Electron shell (local thick client)
 ├── apps/worker/           # BullMQ consumer: import, render, publish, overlays
 ├── packages/
 │   ├── config/            # Shared TS configs
@@ -66,7 +67,7 @@ ClipForge/
 ## Prerequisites
 
 - **Node.js** 20+
-- **pnpm** 9+
+- **pnpm** 9+ (installs Electron automatically for the desktop shell)
 - **PostgreSQL** (required) — via Docker, Homebrew, or hosted (Neon, Supabase, etc.)
 - **Redis** (required for background jobs) — BullMQ queue for `apps/worker`
 - **Docker** (optional) — easiest way to run Postgres, Redis, and MinIO together
@@ -89,9 +90,11 @@ chmod +x start.sh start-docker.sh
 ./start.sh
 ```
 
-Open the URL printed at startup (default scan from http://localhost:6000) — sign in with `demo@clipforge.local`.
+ClipForge opens in an **Electron** window (thick client). The Next.js server still runs locally on an auto-selected port (default scan from 4000) for API routes and SSR. Sign in with `demo@clipforge.local`.
 
 Optional demo seed: `CLIPFORGE_SEED=1 ./start.sh`
+
+Browser-only dev (no Electron): `pnpm dev:browser`
 
 ### Manual setup
 
@@ -129,7 +132,7 @@ Health: http://localhost:8001/health · http://localhost:8002/health
 | `DATABASE_URL` | PostgreSQL connection string |
 | `REDIS_URL` | Redis for BullMQ |
 | `AUTH_SECRET` | Auth.js session secret |
-| `CLIPFORGE_WEB_PORT` | First port to try for Next.js dev (default `6000`; bumps up if busy) |
+| `CLIPFORGE_WEB_PORT` | First port to try for Next.js dev (default `4000`; skips `3000`) |
 | `AUTH_URL` | App URL (set automatically in dev to match the chosen port) |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Optional Google OAuth |
 | `S3_*` | Object storage (MinIO in dev) |

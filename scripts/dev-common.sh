@@ -127,14 +127,49 @@ port_open() {
   (echo >/dev/tcp/"${host}"/"${port}") >/dev/null 2>&1
 }
 
-# First TCP port on host that is not in use, starting at start_port (inclusive).
+# Ports Next.js refuses (https://nextjs.org/docs/messages/reserved-port).
+port_is_next_reserved() {
+  case "${1}" in
+    1|7|9|11|13|15|17|19|20|21|22|23|25|37|42|43|53|69|77|79|87|95|101|102|103|104|109|110|111|113|115|117|119|123|135|137|139|143|161|179|389|427|465|512|513|514|515|526|530|531|532|540|548|554|556|563|587|601|636|989|990|993|995|1719|1720|1723|2049|3659|4045|5060|5061|6000|6566|6665|6666|6667|6668|6669|6697|10080)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+port_is_clipforge_blocked() {
+  # Keep ClipForge off the usual local dev port (CRA, Next defaults, etc.).
+  case "${1}" in
+    3000) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+port_unavailable() {
+  local host="$1"
+  local port="$2"
+  if port_open "${host}" "${port}"; then
+    return 0
+  fi
+  if port_is_next_reserved "${port}"; then
+    return 0
+  fi
+  if port_is_clipforge_blocked "${port}"; then
+    return 0
+  fi
+  return 1
+}
+
+# First TCP port on host that is not in use and allowed by Next.js.
 find_free_port() {
   local host="${1:-localhost}"
-  local start_port="${2:-6000}"
-  local max_port="${3:-6999}"
+  local start_port="${2:-4000}"
+  local max_port="${3:-4999}"
   local port="${start_port}"
 
-  while port_open "${host}" "${port}"; do
+  while port_unavailable "${host}" "${port}"; do
     port=$((port + 1))
     if [[ "${port}" -gt "${max_port}" ]]; then
       err "No free port on ${host} between ${start_port} and ${max_port}"
@@ -148,8 +183,8 @@ find_free_port() {
 prepare_web_dev_env() {
   local root="$1"
   local host="localhost"
-  local start_port="${CLIPFORGE_WEB_PORT:-6000}"
-  local max_port="${CLIPFORGE_WEB_PORT_MAX:-6999}"
+  local start_port="${CLIPFORGE_WEB_PORT:-4000}"
+  local max_port="${CLIPFORGE_WEB_PORT_MAX:-4999}"
 
   load_env "${root}"
 
@@ -160,6 +195,7 @@ prepare_web_dev_env() {
 
   export AUTH_URL="http://localhost:${PORT}"
   export YOUTUBE_OAUTH_REDIRECT_URI="http://localhost:${PORT}/api/accounts/callback/youtube"
+  echo "${PORT}" > "${root}/.clipforge-dev-port"
 }
 
 find_psql() {
@@ -279,7 +315,11 @@ check_redis() {
 start_app() {
   local root="$1"
   prepare_web_dev_env "${root}"
-  log "Starting Next.js dev server at http://localhost:${PORT}"
+  if [[ "${CLIPFORGE_WEB_ONLY:-0}" == "1" ]]; then
+    log "Starting Next.js dev server at http://localhost:${PORT} (browser)"
+  else
+    log "Starting ClipForge desktop (API at http://localhost:${PORT})"
+  fi
   log "Sign in with demo@clipforge.local (credentials provider)"
   exec pnpm --dir "${root}" dev
 }

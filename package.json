@@ -2,9 +2,11 @@
   "name": "clipforge",
   "private": true,
   "scripts": {
-    "dev": "turbo dev --filter=@clipforge/web --filter=@clipforge/worker",
-    "dev:web": "turbo dev --filter=@clipforge/web",
+    "dev": "bash scripts/dev-turbo.sh",
+    "dev:web": "CLIPFORGE_DEV_WEB_ONLY=1 bash scripts/dev-turbo.sh",
+    "dev:browser": "CLIPFORGE_WEB_ONLY=1 bash scripts/dev-turbo.sh",
     "dev:worker": "turbo dev --filter=@clipforge/worker",
+    "dev:desktop": "pnpm --dir apps/desktop dev",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "db:generate": "turbo db:generate",

@@ -6,11 +6,11 @@ import { prisma } from "@clipforge/database";
 import { redirect } from "next/navigation";
 
 type Props = {
-  params: Promise<{ sourceId: string; clipId: string }>;
+  params: Promise<{ id: string; clipId: string }>;
 };
 
 export default async function ClipDetailPage(props: Props) {
-  const { sourceId, clipId } = await props.params;
+  const { id: sourceId, clipId } = await props.params;
 
   const userId = await getSessionUserId();
   if (userId === null) {

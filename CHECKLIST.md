@@ -24,6 +24,10 @@ Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](
 - [x] API route stubs with Zod validation + workspace scoping
 - [x] BullMQ enqueue client + S3 storage adapter stubs
 
+### Desktop (`apps/desktop`)
+- [x] Electron shell loads local Next.js dev server (port file + health poll)
+- [ ] Packaged production build (electron-builder / signed installers)
+
 ### Workers
 - [x] `services/worker-video` FastAPI + health + job stubs
 - [x] `services/worker-ai` FastAPI + health + job stubs
@@ -34,7 +38,7 @@ Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](
 - [x] `developer.md` — Docker and non-Docker dev setup
 - [x] `start.sh` / `start-docker.sh` — install deps, migrate, run dev server
 
-> **Auto-updated:** Added `developer.md` and start scripts on 2026-05-18. Rights gate deferred 2026-05-18 — direct import for MVP. `start.sh` auto-provisions local `clipforge` Postgres role/db on 2026-05-18. Web dev port auto-scan from 6000 on 2026-05-18.
+> **Auto-updated:** Added `developer.md` and start scripts on 2026-05-18. Rights gate deferred 2026-05-18 — direct import for MVP. `start.sh` auto-provisions local `clipforge` Postgres role/db on 2026-05-18. Web dev port auto-scan from 4000 (skips 3000) on 2026-05-18. Electron desktop shell (`apps/desktop`) on 2026-05-18.
 
 ---
 

@@ -15,9 +15,19 @@ Both scripts will:
 2. Generate `AUTH_SECRET` if still set to the placeholder  
 3. Run `pnpm install`  
 4. Run Prisma generate + `migrate deploy`  
-5. Start `pnpm dev` (Next.js scans from port 6000 upward; URL printed in the terminal)
+5. Start `pnpm dev` — **Electron desktop** + Next.js (port 4000+) + BullMQ worker
 
-Run the job worker in a **second terminal** if not using root `pnpm dev` (which starts web + worker together):
+`pnpm dev` runs web, worker, and `@clipforge/desktop` together. The Electron window loads the local Next.js server; you do not need to open a browser. For browser-only: `pnpm dev:browser`.
+
+**Electron install:** `pnpm install` at the repo root runs Electron’s postinstall (downloads the native binary, ~150MB once). Verify with:
+
+```bash
+pnpm --dir apps/desktop exec electron --version
+```
+
+**Startup order:** `scripts/dev-turbo.sh` (used by `pnpm dev`) writes `.clipforge-dev-port` before Turbo starts, so the desktop shell does not race the web server. `./start.sh` does the same via `prepare_web_dev_env`.
+
+Run the job worker in a **second terminal** only if not using root `pnpm dev` (which starts all three):
 
 ```bash
 pnpm dev:worker
@@ -129,7 +139,7 @@ S3_BUCKET="clipforge-media"
    - Login: `clipforge` / `clipforge_secret`  
    - Create bucket: `clipforge-media`
 
-4. Open the URL from the dev server log (starts at http://localhost:6000 if free) and sign in with `demo@clipforge.local`.
+4. Use the ClipForge desktop window (or open http://localhost:4000+ from the log if using `dev:browser`). Sign in with `demo@clipforge.local`.
 
 ### Docker commands (manual)
 
@@ -232,7 +242,8 @@ Run migrations from your machine (scripts do this automatically):
 | `migrate deploy` fails | Create database: `createdb clipforge` |
 | Redis warnings | Start Redis or ignore until queue workers exist |
 | Auth errors | Ensure `AUTH_SECRET` is set in **both** `.env` and `apps/web/.env` |
-| `EADDRINUSE` on web port | Re-run `./start.sh` or `pnpm dev` — port scan starts at `CLIPFORGE_WEB_PORT` (default 6000) |
+| `EADDRINUSE` on web port | Re-run `./start.sh` or `pnpm dev` — scan starts at `CLIPFORGE_WEB_PORT` (default 4000; port 3000 is never used) |
+| Electron timeout / no window | Run `pnpm install` at repo root; ensure `pnpm dev` (not only `dev:web`). Check `.clipforge-dev-port` exists and `pnpm --dir apps/desktop exec electron --version` works |
 
 ---
 
