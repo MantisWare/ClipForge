@@ -89,7 +89,7 @@ chmod +x start.sh start-docker.sh
 ./start.sh
 ```
 
-Open http://localhost:3000 — sign in with `demo@clipforge.local`.
+Open the URL printed at startup (default scan from http://localhost:6000) — sign in with `demo@clipforge.local`.
 
 Optional demo seed: `CLIPFORGE_SEED=1 ./start.sh`
 
@@ -129,7 +129,8 @@ Health: http://localhost:8001/health · http://localhost:8002/health
 | `DATABASE_URL` | PostgreSQL connection string |
 | `REDIS_URL` | Redis for BullMQ |
 | `AUTH_SECRET` | Auth.js session secret |
-| `AUTH_URL` | App URL (e.g. `http://localhost:3000`) |
+| `CLIPFORGE_WEB_PORT` | First port to try for Next.js dev (default `6000`; bumps up if busy) |
+| `AUTH_URL` | App URL (set automatically in dev to match the chosen port) |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Optional Google OAuth |
 | `S3_*` | Object storage (MinIO in dev) |
 | `OPENAI_API_KEY` | LLM clip scoring (Phase 4) + Amazon product discovery (Phase 10) |
@@ -167,7 +168,7 @@ Full spec: [docs/clipforge_ai_shorts_platform_cursor_spec.md](docs/clipforge_ai_
 
 ## Progress
 
-Track phases in **[CHECKLIST.md](CHECKLIST.md)** — through Phase 11 (monetization overlays + multi-network affiliate). See [docs/phase-9-monetization-overlays.md](docs/phase-9-monetization-overlays.md), [docs/phase-10-ai-amazon-affiliate.md](docs/phase-10-ai-amazon-affiliate.md), [docs/phase-11-multi-affiliate.md](docs/phase-11-multi-affiliate.md).
+Track phases in **[CHECKLIST.md](CHECKLIST.md)** — through Phase 11 (shipped); **Phase 12** is the post-MVP planning backlog. See [docs/phase-9-monetization-overlays.md](docs/phase-9-monetization-overlays.md), [docs/phase-10-ai-amazon-affiliate.md](docs/phase-10-ai-amazon-affiliate.md), [docs/phase-11-multi-affiliate.md](docs/phase-11-multi-affiliate.md), [docs/phase-12-post-mvp-platform.md](docs/phase-12-post-mvp-platform.md).
 
 ## Compliance (deferred)
 

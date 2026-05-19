@@ -127,10 +127,127 @@ port_open() {
   (echo >/dev/tcp/"${host}"/"${port}") >/dev/null 2>&1
 }
 
+# First TCP port on host that is not in use, starting at start_port (inclusive).
+find_free_port() {
+  local host="${1:-localhost}"
+  local start_port="${2:-6000}"
+  local max_port="${3:-6999}"
+  local port="${start_port}"
+
+  while port_open "${host}" "${port}"; do
+    port=$((port + 1))
+    if [[ "${port}" -gt "${max_port}" ]]; then
+      err "No free port on ${host} between ${start_port} and ${max_port}"
+      return 1
+    fi
+  done
+  echo "${port}"
+}
+
+# Sets PORT, AUTH_URL, and YOUTUBE_OAUTH_REDIRECT_URI for the web dev server.
+prepare_web_dev_env() {
+  local root="$1"
+  local host="localhost"
+  local start_port="${CLIPFORGE_WEB_PORT:-6000}"
+  local max_port="${CLIPFORGE_WEB_PORT_MAX:-6999}"
+
+  load_env "${root}"
+
+  if [[ -z "${PORT:-}" ]]; then
+    PORT="$(find_free_port "${host}" "${start_port}" "${max_port}")"
+    export PORT
+  fi
+
+  export AUTH_URL="http://localhost:${PORT}"
+  export YOUTUBE_OAUTH_REDIRECT_URI="http://localhost:${PORT}/api/accounts/callback/youtube"
+}
+
+find_psql() {
+  if command -v psql >/dev/null 2>&1; then
+    command -v psql
+    return 0
+  fi
+  local brew_prefix
+  for brew_prefix in \
+    "$(brew --prefix postgresql@16 2>/dev/null)" \
+    "$(brew --prefix postgresql@15 2>/dev/null)" \
+    "$(brew --prefix postgresql 2>/dev/null)" \
+    "/opt/homebrew/opt/postgresql@16" \
+    "/opt/homebrew/opt/postgresql@15" \
+    "/usr/local/opt/postgresql@16" \
+    "/usr/local/opt/postgresql@15"; do
+    if [[ -n "${brew_prefix}" && -x "${brew_prefix}/bin/psql" ]]; then
+      echo "${brew_prefix}/bin/psql"
+      return 0
+    fi
+  done
+  return 1
+}
+
+postgres_url_host() {
+  local url="$1"
+  echo "${url}" | sed -n 's|.*@\([^:/]*\).*|\1|p'
+}
+
+postgres_can_connect() {
+  local url="$1"
+  local psql_bin
+  psql_bin="$(find_psql)" || return 1
+  "${psql_bin}" "${url%%\?*}" -c "SELECT 1" >/dev/null 2>&1
+}
+
+ensure_local_postgres() {
+  local url="${DATABASE_URL:-postgresql://clipforge:clipforge@localhost:5432/clipforge?schema=public}"
+  local host db_user db_name psql_bin
+
+  host="$(postgres_url_host "${url}")"
+  host="${host:-localhost}"
+  if [[ "${host}" != "localhost" && "${host}" != "127.0.0.1" ]]; then
+    return 0
+  fi
+
+  if postgres_can_connect "${url}"; then
+    return 0
+  fi
+
+  psql_bin="$(find_psql)" || {
+    warn "Cannot verify Postgres credentials (psql not found)."
+    warn "Create role/database manually — see developer.md (macOS Homebrew section)."
+    return 0
+  }
+
+  db_user="$(echo "${url}" | sed -n 's|postgresql://\([^:]*\):.*|\1|p')"
+  db_name="$(echo "${url}" | sed -n 's|.*/\([^?]*\).*|\1|p')"
+  db_user="${db_user:-clipforge}"
+  db_name="${db_name:-clipforge}"
+
+  local port
+  port="$(echo "${url}" | sed -n 's|.*:\([0-9]*\)/.*|\1|p')"
+  port="${port:-5432}"
+
+  log "Provisioning local Postgres role '${db_user}' and database '${db_name}'..."
+  "${psql_bin}" -h "${host}" -p "${port}" \
+    -U "${USER}" -d postgres -v ON_ERROR_STOP=0 <<SQL
+CREATE USER ${db_user} WITH PASSWORD 'clipforge' CREATEDB;
+ALTER USER ${db_user} WITH PASSWORD 'clipforge';
+CREATE DATABASE ${db_name} OWNER ${db_user};
+SQL
+
+  if postgres_can_connect "${url}"; then
+    log "PostgreSQL ready (${db_user}@${host}/${db_name})"
+    return 0
+  fi
+
+  err "Could not connect with DATABASE_URL after provisioning attempt."
+  err "Set DATABASE_URL in .env to match your local Postgres user, e.g.:"
+  err "  postgresql://${USER}@localhost:5432/${db_name}?schema=public"
+  return 1
+}
+
 check_postgres() {
   local url="${DATABASE_URL:-postgresql://clipforge:clipforge@localhost:5432/clipforge?schema=public}"
   local host port
-  host="$(echo "${url}" | sed -n 's|.*@\([^:/]*\).*|\1|p')"
+  host="$(postgres_url_host "${url}")"
   port="$(echo "${url}" | sed -n 's|.*:\([0-9]*\)/.*|\1|p')"
   host="${host:-localhost}"
   port="${port:-5432}"
@@ -161,8 +278,8 @@ check_redis() {
 
 start_app() {
   local root="$1"
-  load_env "${root}"
-  log "Starting Next.js dev server at http://localhost:3000"
+  prepare_web_dev_env "${root}"
+  log "Starting Next.js dev server at http://localhost:${PORT}"
   log "Sign in with demo@clipforge.local (credentials provider)"
   exec pnpm --dir "${root}" dev
 }

@@ -15,7 +15,7 @@ Both scripts will:
 2. Generate `AUTH_SECRET` if still set to the placeholder  
 3. Run `pnpm install`  
 4. Run Prisma generate + `migrate deploy`  
-5. Start `pnpm dev` (Next.js + BullMQ worker on http://localhost:3000)
+5. Start `pnpm dev` (Next.js scans from port 6000 upward; URL printed in the terminal)
 
 Run the job worker in a **second terminal** if not using root `pnpm dev` (which starts web + worker together):
 
@@ -129,7 +129,7 @@ S3_BUCKET="clipforge-media"
    - Login: `clipforge` / `clipforge_secret`  
    - Create bucket: `clipforge-media`
 
-4. Open http://localhost:3000 and sign in with `demo@clipforge.local`.
+4. Open the URL from the dev server log (starts at http://localhost:6000 if free) and sign in with `demo@clipforge.local`.
 
 ### Docker commands (manual)
 
@@ -228,9 +228,11 @@ Run migrations from your machine (scripts do this automatically):
 | Issue | Fix |
 |-------|-----|
 | `PostgreSQL not reachable` | Start Postgres; verify `DATABASE_URL` |
+| `P1010: User was denied access` | Local Postgres is up but the `clipforge` role/db are missing. Run the Homebrew block above, or re-run `./start.sh` (it auto-provisions on localhost). Or set `DATABASE_URL` to your macOS user: `postgresql://YOUR_USERNAME@localhost:5432/clipforge?schema=public` |
 | `migrate deploy` fails | Create database: `createdb clipforge` |
 | Redis warnings | Start Redis or ignore until queue workers exist |
 | Auth errors | Ensure `AUTH_SECRET` is set in **both** `.env` and `apps/web/.env` |
+| `EADDRINUSE` on web port | Re-run `./start.sh` or `pnpm dev` — port scan starts at `CLIPFORGE_WEB_PORT` (default 6000) |
 
 ---
 

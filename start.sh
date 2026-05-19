@@ -26,6 +26,9 @@ if ! check_postgres; then
   exit 1
 fi
 
+load_env "${ROOT}"
+ensure_local_postgres || exit 1
+
 check_redis || true
 
 install_deps "${ROOT}"

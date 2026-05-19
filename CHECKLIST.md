@@ -1,6 +1,6 @@
 # ClipForge Implementation Checklist
 
-Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](docs/clipforge_ai_shorts_platform_cursor_spec.md) for full requirements. Phase 9: [docs/phase-9-monetization-overlays.md](docs/phase-9-monetization-overlays.md). Phase 10: [docs/phase-10-ai-amazon-affiliate.md](docs/phase-10-ai-amazon-affiliate.md). Phase 11: [docs/phase-11-multi-affiliate.md](docs/phase-11-multi-affiliate.md).
+Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](docs/clipforge_ai_shorts_platform_cursor_spec.md) for full requirements. Phase 9: [docs/phase-9-monetization-overlays.md](docs/phase-9-monetization-overlays.md). Phase 10: [docs/phase-10-ai-amazon-affiliate.md](docs/phase-10-ai-amazon-affiliate.md). Phase 11: [docs/phase-11-multi-affiliate.md](docs/phase-11-multi-affiliate.md). Phase 12: [docs/phase-12-post-mvp-platform.md](docs/phase-12-post-mvp-platform.md).
 
 ---
 
@@ -34,7 +34,7 @@ Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](
 - [x] `developer.md` — Docker and non-Docker dev setup
 - [x] `start.sh` / `start-docker.sh` — install deps, migrate, run dev server
 
-> **Auto-updated:** Added `developer.md` and start scripts on 2026-05-18. Rights gate deferred 2026-05-18 — direct import for MVP.
+> **Auto-updated:** Added `developer.md` and start scripts on 2026-05-18. Rights gate deferred 2026-05-18 — direct import for MVP. `start.sh` auto-provisions local `clipforge` Postgres role/db on 2026-05-18. Web dev port auto-scan from 6000 on 2026-05-18.
 
 ---
 
@@ -281,6 +281,48 @@ Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](
 - [x] Monetization UI for all networks
 
 > **Auto-updated by Cursor:** Phase 11 multi-affiliate implemented 2026-05-19.
+
+---
+
+## Phase 12 — Post-MVP platform enhancements
+
+> **Status:** Planning only (not started). Full spec: [docs/phase-12-post-mvp-platform.md](docs/phase-12-post-mvp-platform.md).  
+> Items deferred from Phases 5–9 and the 2026-05-19 gap review. Does not block current MVP.
+
+### Face tracking (render)
+- [ ] Face-aware vertical crop mode (replace center-crop-only MVP)
+- [ ] Crop mode selector in render UI (`center` | `face` | smooth follow)
+- [ ] Fallback to center when no face detected
+- [ ] Feature flag + performance budget documented
+
+### Instagram Graph automation (publish)
+- [ ] Instagram Business/Creator OAuth scopes (linked Facebook Page)
+- [ ] Graph API: container create → video upload → publish Reel
+- [ ] Token refresh + error handling (rate limits, media specs)
+- [ ] Publish UI: direct post path (retain export fallback until verified)
+
+### Experiment group UI
+- [ ] Assign `RenderedClip.experimentGroup` at render time (clip / batch)
+- [ ] Display experiment label on render preview & export package
+- [ ] Filter overlay analytics (and exports) by experiment group
+
+### Worker handlers (replace noops)
+- [ ] `source.validate` — implement async handler **or** remove job type from registry
+- [ ] `ai.generate_metadata` — worker-ai + “Regenerate metadata” on clip review
+- [ ] `overlay.validate_urls` — pre-render URL/allowlist checks (block vs warn TBD)
+- [ ] Enqueue from web APIs where async; integration tests per handler
+
+### Analytics charts & rollup UI
+- [ ] Time-series charts (impressions/clicks by overlay, product link, date)
+- [ ] Date-range filters on analytics dashboard
+- [ ] Trigger or schedule `analytics.rollup` from UI (“Refresh analytics”)
+- [ ] Optional CSV export for overlay performance
+
+### Cleanup
+- [ ] Remove orphan `apps/web/components/placeholder-page.tsx` (confirm zero imports)
+- [ ] Audit remaining Phase 0 placeholder copy in nav/routes
+
+> **Auto-updated by Cursor:** Phase 12 planning backlog added 2026-05-19.
 
 ---
 
