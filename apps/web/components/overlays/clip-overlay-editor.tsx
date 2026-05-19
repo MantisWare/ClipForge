@@ -42,6 +42,7 @@ export const ClipOverlayEditor = ({
   const [localOverlays, setLocalOverlays] = useState<OverlayRow[] | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [ctaVariants, setCtaVariants] = useState<string[]>([]);
+  const [pickProductId, setPickProductId] = useState("");
 
   const overlaysQuery = useQuery({
     queryKey: ["clip-overlays", clipId],
@@ -54,8 +55,20 @@ export const ClipOverlayEditor = ({
     },
   });
 
+  const productsQuery = useQuery({
+    queryKey: ["product-links", workspaceId],
+    queryFn: async () => {
+      const res = await fetch(`/api/product-links?workspaceId=${workspaceId}`);
+      const json = (await res.json()) as {
+        data?: { id: string; title: string; url: string; active: boolean }[];
+      };
+      return (json.data ?? []).filter((row) => row.active);
+    },
+  });
+
   const overlays = localOverlays ?? overlaysQuery.data ?? [];
   const selected = overlays[selectedIndex];
+  const catalogProducts = productsQuery.data ?? [];
 
   const density = useMemo(() => scoreOverlayDensity(overlays), [overlays]);
 
@@ -206,6 +219,48 @@ export const ClipOverlayEditor = ({
     },
   });
 
+  const discoverAmazonMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/clips/${clipId}/affiliate/discover`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId,
+          replaceExistingDraft: true,
+        }),
+      });
+      const json = (await res.json()) as { error?: { message: string } };
+      if (json.error !== undefined) throw new Error(json.error.message);
+    },
+    onSuccess: () => {
+      window.setTimeout(() => {
+        setLocalOverlays(null);
+        void queryClient.invalidateQueries({
+          queryKey: ["clip-overlays", clipId],
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["product-links", workspaceId],
+        });
+      }, 5000);
+    },
+  });
+
+  const applyPackMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/clips/${clipId}/overlay-pack`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId }),
+      });
+      const json = (await res.json()) as { error?: { message: string } };
+      if (json.error !== undefined) throw new Error(json.error.message);
+    },
+    onSuccess: () => {
+      setLocalOverlays(null);
+      void queryClient.invalidateQueries({ queryKey: ["clip-overlays", clipId] });
+    },
+  });
+
   const duplicateMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(
@@ -236,6 +291,40 @@ export const ClipOverlayEditor = ({
     );
     const json = (await res.json()) as { data?: { variants: string[] } };
     setCtaVariants(json.data?.variants ?? []);
+  };
+
+  const addProductOverlay = (
+    overlayType: "product_pin" | "affiliate_bar",
+    product: { id: string; title: string; url: string },
+  ) => {
+    const durationMs = overlayType === "product_pin" ? 6000 : 8000;
+    const startMs = Math.max(0, clipDurationMs - durationMs);
+    const next: OverlayRow = {
+      id: `local-${Date.now()}`,
+      overlayType,
+      productLinkId: product.id,
+      productLink: {
+        id: product.id,
+        title: product.title,
+        url: product.url,
+      },
+      startMs,
+      endMs: clipDurationMs,
+      position: {
+        anchor:
+          overlayType === "product_pin" ? "bottom_right" : "bottom_center",
+        marginPx: 80,
+      },
+      style:
+        overlayType === "product_pin"
+          ? { cta: "Shop", headline: product.title }
+          : { disclosure: "Links may earn a commission." },
+      compliance: "affiliate",
+      sortOrder: overlays.length,
+      isDraft: false,
+    };
+    setLocalOverlays([...overlays, next]);
+    setSelectedIndex(overlays.length);
   };
 
   const addEndSlate = () => {
@@ -286,10 +375,28 @@ export const ClipOverlayEditor = ({
         <Button
           size="sm"
           variant="secondary"
+          onClick={() => discoverAmazonMutation.mutate()}
+          disabled={discoverAmazonMutation.isPending}
+        >
+          {discoverAmazonMutation.isPending
+            ? "Finding product…"
+            : "Find affiliate product"}
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
           onClick={() => confirmDraftsMutation.mutate()}
           disabled={confirmDraftsMutation.isPending}
         >
           Confirm drafts
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => applyPackMutation.mutate()}
+          disabled={applyPackMutation.isPending}
+        >
+          Apply overlay pack
         </Button>
         <Button
           size="sm"
@@ -308,10 +415,72 @@ export const ClipOverlayEditor = ({
         </Button>
       </div>
 
+      {catalogProducts.length > 0 ? (
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="text-xs text-muted">
+            Catalog product
+            <select
+              className="mt-1 block min-w-[200px] rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+              value={pickProductId}
+              onChange={(e) => setPickProductId(e.target.value)}
+            >
+              <option value="">Select…</option>
+              {catalogProducts.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={pickProductId === ""}
+            onClick={() => {
+              const product = catalogProducts.find((p) => p.id === pickProductId);
+              if (product !== undefined) {
+                addProductOverlay("product_pin", product);
+              }
+            }}
+          >
+            Add product pin
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={pickProductId === ""}
+            onClick={() => {
+              const product = catalogProducts.find((p) => p.id === pickProductId);
+              if (product !== undefined) {
+                addProductOverlay("affiliate_bar", product);
+              }
+            }}
+          >
+            Add affiliate bar
+          </Button>
+        </div>
+      ) : (
+        <p className="text-xs text-muted">
+          Add products in Monetization to attach pins manually.
+        </p>
+      )}
+
       <p className="text-xs text-muted">
         Arrow keys nudge position on the selected overlay. Hook:{" "}
         {suggestedHook ?? "—"}
       </p>
+
+      {discoverAmazonMutation.isSuccess && (
+        <p className="text-sm text-success">
+          Affiliate discovery queued — draft product pin appears in ~5s. Confirm
+          drafts when ready.
+        </p>
+      )}
+      {discoverAmazonMutation.isError && (
+        <p className="text-sm text-danger">
+          {discoverAmazonMutation.error.message}
+        </p>
+      )}
 
       {duplicateMutation.isSuccess && (
         <p className="text-sm text-success">

@@ -1,3 +1,4 @@
+import { maybeEnqueueAffiliateDiscovery } from "@/lib/affiliate-discovery";
 import { apiError, apiSuccess, parseJsonBody } from "@/lib/api";
 import { requireUser, requireWorkspaceEditor } from "@/lib/api-auth";
 import { prisma, ClipStatus } from "@clipforge/database";
@@ -40,5 +41,11 @@ export const POST = async (
     data: { status: ClipStatus.approved },
   });
 
-  return apiSuccess(updated);
+  const discovery = await maybeEnqueueAffiliateDiscovery({
+    clipCandidateId: id,
+    workspaceId: parsed.data.workspaceId,
+    sourceVideoId: clip.sourceVideoId,
+  });
+
+  return apiSuccess({ ...updated, affiliateDiscoveryQueued: discovery.enqueued });
 };

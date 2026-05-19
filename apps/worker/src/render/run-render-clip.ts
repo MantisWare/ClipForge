@@ -15,6 +15,7 @@ import { writeFile } from "node:fs/promises";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { downloadDirectUrl } from "../import/direct-url.js";
+import { fireRenderWebhook } from "../lib/render-webhook.js";
 
 export type RenderClipPayload = {
   renderedClipId: string;
@@ -294,6 +295,7 @@ export const runRenderClip = async (payload: RenderClipPayload): Promise<void> =
           data: { status: ClipStatus.rendered },
         }),
       ]);
+      await fireRenderWebhook(workspaceId, renderedClipId, "clean");
     }
   } catch (error) {
     await prisma.renderedClip.update({

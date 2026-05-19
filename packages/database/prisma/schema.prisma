@@ -406,13 +406,23 @@ enum OverlayEventType {
 }
 
 model WorkspaceOverlaySettings {
-  workspaceId              String   @id
-  defaultDisclosureText    String?  @db.Text
-  defaultLocale            String   @default("en-US")
-  urlAllowlist             String[] @default([])
-  requireDisclosureOnExport Boolean @default(true)
-  createdAt                DateTime @default(now())
-  updatedAt                DateTime @updatedAt
+  workspaceId               String   @id
+  defaultDisclosureText     String?  @db.Text
+  defaultLocale             String   @default("en-US")
+  urlAllowlist              String[] @default([])
+  requireDisclosureOnExport Boolean  @default(true)
+  amazonAssociateTag        String?
+  amazonMarketplace         String   @default("www.amazon.com")
+  ebayCampaignId            String?
+  walmartAffiliateId        String?
+  bestBuyAffiliateId        String?
+  etsyAwinAffiliateId       String?
+  affiliateFallbackOrder    String[] @default(["amazon", "ebay", "walmart", "bestbuy", "etsy"])
+  aiProductDiscoveryEnabled Boolean  @default(true)
+  autoDiscoverOnApprove     Boolean  @default(false)
+  requirePaapiForAmazon     Boolean  @default(false)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
@@ -433,23 +443,25 @@ model OverlayTemplate {
 }
 
 model ProductLink {
-  id               String   @id @default(cuid())
-  workspaceId      String
-  title            String
-  url              String
-  imageStorageKey  String?
-  imageUrl         String?
-  priceLabel       String?
-  affiliateNetwork String?
-  disclosureText   String?  @db.Text
-  active           Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  workspaceId        String
+  title              String
+  url                String
+  imageStorageKey    String?
+  imageUrl           String?
+  priceLabel         String?
+  affiliateNetwork   String?
+  externalProductId  String?
+  disclosureText     String?  @db.Text
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   clipOverlays   ClipOverlay[]
   overlayLinkSlugs OverlayLinkSlug[]
 
+  @@unique([workspaceId, affiliateNetwork, externalProductId])
   @@index([workspaceId])
 }
 
@@ -621,6 +633,7 @@ enum JobType {
   analytics_rollup
   render_apply_overlays
   ai_suggest_overlays
+  ai_discover_amazon_product
   overlay_validate_urls
 }
 

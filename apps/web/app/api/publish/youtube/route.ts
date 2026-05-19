@@ -46,7 +46,7 @@ export const POST = async (request: Request) => {
       connectedAccountId: parsed.data.connectedAccountId,
       title: parsed.data.title,
       caption: metadata.description,
-      hashtags: parsed.data.hashtags,
+      hashtags: [],
       visibility: parsed.data.visibility,
       scheduledFor: parsed.data.scheduledFor
         ? new Date(parsed.data.scheduledFor)

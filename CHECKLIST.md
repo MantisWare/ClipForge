@@ -1,6 +1,6 @@
 # ClipForge Implementation Checklist
 
-Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](docs/clipforge_ai_shorts_platform_cursor_spec.md) for full requirements. Phase 9 implementation notes: [docs/phase-9-monetization-overlays.md](docs/phase-9-monetization-overlays.md).
+Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](docs/clipforge_ai_shorts_platform_cursor_spec.md) for full requirements. Phase 9: [docs/phase-9-monetization-overlays.md](docs/phase-9-monetization-overlays.md). Phase 10: [docs/phase-10-ai-amazon-affiliate.md](docs/phase-10-ai-amazon-affiliate.md). Phase 11: [docs/phase-11-multi-affiliate.md](docs/phase-11-multi-affiliate.md).
 
 ---
 
@@ -235,6 +235,55 @@ Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](
 
 ---
 
+## Phase 10 — AI Amazon affiliate discovery
+
+> Full spec: [docs/phase-10-ai-amazon-affiliate.md](docs/phase-10-ai-amazon-affiliate.md)
+
+### Workspace affiliate config
+- [x] `amazonAssociateTag`, `amazonMarketplace`, `aiProductDiscoveryEnabled` on overlay settings
+- [x] Monetization UI — Associates tag + marketplace + toggle
+
+### AI product matching
+- [x] OpenAI-compatible LLM via `worker-ai` `POST /v1/discover-amazon-product`
+- [x] Context: transcript segments, hook, title, caption, hashtags
+- [x] Job `ai.discover_amazon_product` in Node worker
+
+### Affiliate links
+- [x] Build tagged Amazon search URL (fallback without PA-API)
+- [x] Optional PA-API 5 `SearchItems` → `/dp/{ASIN}?tag=` when env keys set
+- [x] Create `ProductLink` + draft `product_pin` overlay with timing hint
+
+### API & UI
+- [x] `POST /api/clips/[id]/affiliate/discover`
+- [x] Clip overlay editor — **Find Amazon product** button
+
+### Deferred (completed in Phase 11)
+- [x] Auto-discover on clip approval (`autoDiscoverOnApprove`)
+- [x] Product image fetch to S3 after product API hit
+- [x] Non-Amazon affiliate networks (see Phase 11)
+
+> **Auto-updated by Cursor:** Phase 10 AI Amazon affiliate discovery implemented 2026-05-19.
+
+---
+
+## Phase 11 — Multi-network affiliate resolver
+
+> Full spec: [docs/phase-11-multi-affiliate.md](docs/phase-11-multi-affiliate.md)
+
+- [x] eBay Partner Network (campaign ID + optional Browse API)
+- [x] Walmart Affiliates (Impact publisher id)
+- [x] Best Buy Affiliates (Impact publisher id)
+- [x] Etsy Affiliates (Awin publisher id)
+- [x] Ordered fallback chain with category bias (tech / lifestyle / general)
+- [x] Single product link + draft overlay per discovery
+- [x] Catalog dedup by `externalProductId`
+- [x] `requirePaapiForAmazon` to force fallback when Amazon has no ASIN
+- [x] Monetization UI for all networks
+
+> **Auto-updated by Cursor:** Phase 11 multi-affiliate implemented 2026-05-19.
+
+---
+
 ## MVP acceptance (from spec §22)
 
 - [x] User can sign in
@@ -253,3 +302,20 @@ Track progress by phase. See [docs/clipforge_ai_shorts_platform_cursor_spec.md](
 - [x] All heavy ops queued & status-tracked (BullMQ + job APIs)
 
 > **Auto-updated by Cursor:** Synced MVP acceptance with Phases 1–7 implementation on 2026-05-18.
+
+---
+
+## Post-review fixes (2026-05-19)
+
+- [x] Calendar scheduling: account picker, rendered clip picker, `?renderedClipId=` from preview
+- [x] Scheduled + immediate YouTube publish use full affiliate description (`buildPublishMetadataForRendered`)
+- [x] Re-render when clip status is `rendered`; overlay editor link on render preview
+- [x] Publish preview loads generated description + links block
+- [x] Monetization UI: URL allowlist + render webhook fields
+- [x] Overlay editor: Apply overlay pack button
+- [x] README architecture/docs accuracy (`apps/worker` as primary consumer)
+- [x] Render webhook fires on clean-only renders (`variant: clean`)
+- [x] TikTok/Instagram publish captions include affiliate links block
+- [x] Overlay editor: manual product pin / affiliate bar from catalog
+
+> **Auto-updated by Cursor:** Comprehensive gap scan fixes on 2026-05-19.

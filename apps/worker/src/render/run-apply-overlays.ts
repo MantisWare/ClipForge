@@ -13,6 +13,7 @@ import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { basename } from "node:path";
 import { downloadDirectUrl } from "../import/direct-url.js";
+import { fireRenderWebhook } from "../lib/render-webhook.js";
 import { mapClipOverlaysToRenderItems } from "./overlay-assets.js";
 import {
   buildOverlayDrawtextFilters,
@@ -23,34 +24,6 @@ export type ApplyOverlaysPayload = {
   renderedClipId: string;
   clipCandidateId: string;
   workspaceId: string;
-};
-
-const fireRenderWebhook = async (
-  workspaceId: string,
-  renderedClipId: string,
-) => {
-  const workspace = await prisma.workspace.findUnique({
-    where: { id: workspaceId },
-    select: { renderWebhookUrl: true },
-  });
-  const url = workspace?.renderWebhookUrl;
-  if (url === null || url === undefined || url === "") {
-    return;
-  }
-  try {
-    await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event: "render.complete",
-        renderedClipId,
-        workspaceId,
-        variant: "monetized",
-      }),
-    });
-  } catch {
-    /* webhook is best-effort */
-  }
 };
 
 export const runApplyOverlays = async (
@@ -248,7 +221,7 @@ export const runApplyOverlays = async (
       }),
     ]);
 
-    await fireRenderWebhook(workspaceId, renderedClipId);
+    await fireRenderWebhook(workspaceId, renderedClipId, "monetized");
   } catch (error) {
     await prisma.renderedClip.update({
       where: { id: renderedClipId },

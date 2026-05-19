@@ -1,7 +1,9 @@
 import {
+  aiProductDiscoveryResultSchema,
   getClipScoringConfig,
   getTranscribeConfig,
   scoreClipsResponseSchema,
+  type AiProductDiscoveryResult,
   type ClipWindow,
   type ScoreClipsResponse,
   type TranscribeApiResponse,
@@ -71,6 +73,56 @@ export const scoreClipsWithAi = async (
     const parsed = scoreClipsResponseSchema.safeParse(json);
     if (!parsed.success) {
       throw new Error(`Invalid score-clips response: ${parsed.error.message}`);
+    }
+    return parsed.data;
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+export type DiscoverAmazonProductInput = {
+  suggestedTitle?: string | null;
+  suggestedHook?: string | null;
+  suggestedCaption?: string | null;
+  suggestedHashtags?: string[];
+  transcriptExcerpt: string;
+  transcriptSegments: Array<{ startMs: number; endMs: number; text: string }>;
+};
+
+export const discoverAmazonProductWithAi = async (
+  input: DiscoverAmazonProductInput,
+): Promise<AiProductDiscoveryResult> => {
+  const transcribeConfig = getTranscribeConfig();
+  const clipConfig = getClipScoringConfig();
+  const url = `${transcribeConfig.workerAiUrl.replace(/\/$/, "")}/v1/discover-amazon-product`;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120_000);
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...input,
+        model: clipConfig.openaiModel,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(
+        `worker-ai discover-amazon-product failed: ${res.status} ${text}`,
+      );
+    }
+
+    const json: unknown = await res.json();
+    const parsed = aiProductDiscoveryResultSchema.safeParse(json);
+    if (!parsed.success) {
+      throw new Error(
+        `Invalid discover-amazon-product response: ${parsed.error.message}`,
+      );
     }
     return parsed.data;
   } finally {

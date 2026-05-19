@@ -1,5 +1,6 @@
 import { apiError, apiSuccess, parseJsonBody } from "@/lib/api";
 import { requireUser, requireWorkspaceEditor } from "@/lib/api-auth";
+import { buildPublishMetadataForRendered } from "@/lib/publish-description";
 import { assertRenderedClipReady } from "@/lib/publish-validation";
 import { enqueueJobDelayed } from "@/lib/queue";
 import { Platform, prisma, ScheduledPublishStatus } from "@clipforge/database";
@@ -50,6 +51,38 @@ export const POST = async (request: Request) => {
     return apiError("VALIDATION_ERROR", "Invalid platform", 400);
   }
 
+  if (
+    platform === Platform.youtube &&
+    (parsed.data.connectedAccountId === undefined ||
+      parsed.data.connectedAccountId === "")
+  ) {
+    return apiError(
+      "VALIDATION_ERROR",
+      "connectedAccountId is required for YouTube scheduled publish",
+      400,
+    );
+  }
+
+  if (parsed.data.connectedAccountId !== undefined) {
+    const account = await prisma.connectedAccount.findFirst({
+      where: {
+        id: parsed.data.connectedAccountId,
+        workspaceId: parsed.data.workspaceId,
+        platform,
+      },
+    });
+    if (account === null) {
+      return apiError("VALIDATION_ERROR", "Connected account not found", 400);
+    }
+  }
+
+  const metadata = await buildPublishMetadataForRendered(
+    parsed.data.renderedClipId,
+    parsed.data.workspaceId,
+    parsed.data.caption,
+    parsed.data.hashtags,
+  );
+
   const scheduled = await prisma.scheduledPublish.create({
     data: {
       workspaceId: parsed.data.workspaceId,
@@ -57,8 +90,8 @@ export const POST = async (request: Request) => {
       connectedAccountId: parsed.data.connectedAccountId,
       platform,
       title: parsed.data.title,
-      caption: parsed.data.caption,
-      hashtags: parsed.data.hashtags ?? [],
+      caption: metadata.description,
+      hashtags: [],
       visibility: parsed.data.visibility,
       scheduledFor,
       status: ScheduledPublishStatus.scheduled,

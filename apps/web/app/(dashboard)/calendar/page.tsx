@@ -3,7 +3,12 @@ import { getSessionUserId } from "@/lib/auth";
 import { getActiveWorkspace } from "@/lib/workspace-context";
 import { redirect } from "next/navigation";
 
-export default async function CalendarPage() {
+type Props = {
+  searchParams: Promise<{ renderedClipId?: string }>;
+};
+
+export default async function CalendarPage(props: Props) {
+  const { renderedClipId } = await props.searchParams;
   const userId = await getSessionUserId();
   if (userId === null) {
     redirect("/sign-in");
@@ -18,7 +23,10 @@ export default async function CalendarPage() {
           Schedule YouTube publishes for rendered clips.
         </p>
       </div>
-      <CalendarClient workspaceId={workspace.id} />
+      <CalendarClient
+        workspaceId={workspace.id}
+        renderedClipId={renderedClipId}
+      />
     </div>
   );
 }

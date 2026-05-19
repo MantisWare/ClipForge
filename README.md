@@ -18,17 +18,17 @@ flowchart TB
     Redis[(Redis)]
     S3[MinIO / S3]
   end
-  subgraph workers [Python Workers]
-    WV[worker-video]
-    WA[worker-ai]
+  subgraph workers [Workers]
+    NW[apps/worker Node BullMQ]
+    WA[worker-ai FastAPI]
   end
   UI --> API
   API --> Auth
   API --> PG
   API --> Redis
   API --> S3
-  Redis --> WV
-  Redis --> WA
+  Redis --> NW
+  NW --> WA
 ```
 
 | Layer | Stack |
@@ -36,22 +36,24 @@ flowchart TB
 | Frontend + API | Next.js 15, React 19, TypeScript, Tailwind |
 | Auth | Auth.js v5 (Prisma adapter) |
 | Database | PostgreSQL + Prisma |
-| Queue | Redis + BullMQ |
+| Queue | Redis + BullMQ (`apps/worker`) |
 | Storage | S3-compatible (MinIO locally) |
-| Workers | FastAPI + FFmpeg + Faster-Whisper (phased) |
+| Media pipeline | Node worker: import, FFmpeg render, overlays, publish |
+| AI services | Python `worker-ai`: transcribe, score clips, affiliate discovery |
 
 ## Monorepo layout
 
 ```txt
 ClipForge/
 ├── apps/web/              # Next.js app (UI + /app/api)
+├── apps/worker/           # BullMQ consumer: import, render, publish, overlays
 ├── packages/
 │   ├── config/            # Shared TS configs
 │   ├── database/          # Prisma schema & client
 │   └── shared/            # Types, Zod schemas, constants
 ├── services/
-│   ├── worker-video/      # Import, audio, FFmpeg render
-│   └── worker-ai/         # Transcription, clip scoring
+│   ├── worker-video/      # Legacy FastAPI stubs (not on active queue path)
+│   └── worker-ai/         # Transcription, clip scoring, product discovery LLM
 ├── infra/docker-compose.yml
 ├── developer.md           # Docker & local dev setup
 ├── start.sh               # Start without Docker
@@ -66,7 +68,7 @@ ClipForge/
 - **Node.js** 20+
 - **pnpm** 9+
 - **PostgreSQL** (required) — via Docker, Homebrew, or hosted (Neon, Supabase, etc.)
-- **Redis** (recommended) — optional for scaffold; required for BullMQ workers later
+- **Redis** (required for background jobs) — BullMQ queue for `apps/worker`
 - **Docker** (optional) — easiest way to run Postgres, Redis, and MinIO together
 - **FFmpeg** (for workers, Phase 2+)
 - **Python** 3.11+ (for workers, optional in scaffold)
@@ -130,7 +132,11 @@ Health: http://localhost:8001/health · http://localhost:8002/health
 | `AUTH_URL` | App URL (e.g. `http://localhost:3000`) |
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Optional Google OAuth |
 | `S3_*` | Object storage (MinIO in dev) |
-| `OPENAI_API_KEY` | LLM clip scoring (Phase 4) |
+| `OPENAI_API_KEY` | LLM clip scoring (Phase 4) + Amazon product discovery (Phase 10) |
+| `OPENAI_BASE_URL` | Optional ChatGPT-compatible API base URL |
+| `AMAZON_PAAPI_ACCESS_KEY` | Optional PA-API product search (Phase 10) |
+| `AMAZON_PAAPI_SECRET_KEY` | Optional PA-API secret |
+| `EBAY_CLIENT_ID` / `EBAY_CLIENT_SECRET` | Optional eBay Browse API (Phase 11) |
 | `YOUTUBE_API_KEY` | Discovery & metadata (Phase 7) |
 | `WORKER_VIDEO_URL` / `WORKER_AI_URL` | Worker base URLs |
 
@@ -147,20 +153,21 @@ See [.env.example](.env.example) for defaults.
 | `pnpm db:seed` | Seed demo workspace |
 | `pnpm typecheck` | TypeScript check (all packages) |
 
-## API overview (scaffold)
+## API overview (selected)
 
-- `POST /api/sources/validate` — Parse & validate URL
-- `POST /api/sources/import` — Create source + enqueue import job
-- `GET /api/sources` — List workspace sources
-- `POST /api/clips/generate-candidates` — Queue AI scoring
-- `POST /api/publish/youtube` | `tiktok` | `instagram` — Publishing stubs
-- `GET /api/discover/youtube/most-popular` — Discovery stub + rights warning
+- `POST /api/sources/validate` | `import` — URL validation + queued import
+- `POST /api/clips/generate-candidates` — AI clip scoring
+- `POST /api/clips/[id]/render` — Vertical render (+ optional overlays)
+- `POST /api/clips/[id]/affiliate/discover` — Multi-network affiliate product discovery
+- `POST /api/publish/youtube` — YouTube Shorts upload (connected account)
+- `POST /api/scheduled-publish` — Schedule publish with affiliate description
+- `GET /api/discover/youtube/*` — YouTube discovery feeds
 
 Full spec: [docs/clipforge_ai_shorts_platform_cursor_spec.md](docs/clipforge_ai_shorts_platform_cursor_spec.md)
 
 ## Progress
 
-Track implementation phases in **[CHECKLIST.md](CHECKLIST.md)**. Future monetization overlays (ads, affiliate links, product CTAs) are planned in **Phase 9** — see [docs/phase-9-monetization-overlays.md](docs/phase-9-monetization-overlays.md).
+Track phases in **[CHECKLIST.md](CHECKLIST.md)** — through Phase 11 (monetization overlays + multi-network affiliate). See [docs/phase-9-monetization-overlays.md](docs/phase-9-monetization-overlays.md), [docs/phase-10-ai-amazon-affiliate.md](docs/phase-10-ai-amazon-affiliate.md), [docs/phase-11-multi-affiliate.md](docs/phase-11-multi-affiliate.md).
 
 ## Compliance (deferred)
 

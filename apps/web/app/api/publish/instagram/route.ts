@@ -1,5 +1,6 @@
 import { apiError, apiSuccess, parseJsonBody } from "@/lib/api";
 import { requireUser, requireWorkspaceEditor } from "@/lib/api-auth";
+import { buildPublishMetadataForRendered } from "@/lib/publish-description";
 import { assertRenderedClipReady } from "@/lib/publish-validation";
 import { enqueueJob } from "@/lib/queue";
 import { prisma, PublishJobStatus, Platform } from "@clipforge/database";
@@ -30,14 +31,21 @@ export const POST = async (request: Request) => {
     return renderedCheck.error;
   }
 
+  const metadata = await buildPublishMetadataForRendered(
+    parsed.data.renderedClipId,
+    parsed.data.workspaceId,
+    parsed.data.caption,
+    parsed.data.hashtags,
+  );
+
   const publishJob = await prisma.publishJob.create({
     data: {
       renderedClipId: parsed.data.renderedClipId,
       workspaceId: parsed.data.workspaceId,
       platform: Platform.instagram,
       connectedAccountId: parsed.data.connectedAccountId,
-      caption: parsed.data.caption,
-      hashtags: parsed.data.hashtags,
+      caption: metadata.description,
+      hashtags: [],
       visibility: parsed.data.visibility,
       status: PublishJobStatus.queued,
     },

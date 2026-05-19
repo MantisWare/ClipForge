@@ -50,6 +50,29 @@ export const RenderPreviewClient = ({ renderedId }: Props) => {
     },
   });
 
+  const publishMetadataQuery = useQuery({
+    queryKey: ["publish-metadata", renderedId, renderedQuery.data?.workspaceId],
+    queryFn: async () => {
+      const ws = renderedQuery.data?.workspaceId;
+      if (ws === undefined) return null;
+      const res = await fetch(
+        `/api/rendered/${renderedId}/publish-metadata?workspaceId=${ws}`,
+      );
+      const json = (await res.json()) as {
+        data?: {
+          description: string;
+          linksText: string;
+          sourceVideoId: string;
+          clipCandidateId: string;
+        };
+      };
+      return json.data ?? null;
+    },
+    enabled:
+      renderedQuery.data?.workspaceId !== undefined &&
+      renderedQuery.data?.status === "ready",
+  });
+
   const accountsQuery = useQuery({
     queryKey: ["accounts", renderedQuery.data?.workspaceId],
     queryFn: async () => {
@@ -99,6 +122,12 @@ export const RenderPreviewClient = ({ renderedId }: Props) => {
       if (json.error !== undefined) throw new Error(json.error.message);
       const monetized = json.data?.files.monetized?.url;
       if (monetized !== undefined) window.open(monetized, "_blank");
+      if (
+        json.data?.linksText !== undefined &&
+        json.data.linksText !== ""
+      ) {
+        await navigator.clipboard.writeText(json.data.linksText);
+      }
     },
   });
 
@@ -121,7 +150,6 @@ export const RenderPreviewClient = ({ renderedId }: Props) => {
           connectedAccountId: form.accountId,
           title: form.title,
           caption: form.caption,
-          hashtags: rendered.clipCandidate?.suggestedHashtags ?? [],
           visibility: "public",
         }),
       });
@@ -216,17 +244,31 @@ export const RenderPreviewClient = ({ renderedId }: Props) => {
               Manage accounts
             </Link>
             <Link
-              href="/calendar"
+              href={`/calendar?renderedClipId=${renderedId}`}
               className="inline-flex h-10 items-center rounded-lg px-4 text-sm text-muted hover:text-foreground"
             >
               Schedule publish
             </Link>
+            {publishMetadataQuery.data !== undefined &&
+              publishMetadataQuery.data !== null && (
+                <Link
+                  href={`/projects/${publishMetadataQuery.data.sourceVideoId}/clips/${publishMetadataQuery.data.clipCandidateId}`}
+                  className="inline-flex h-10 items-center rounded-lg px-4 text-sm text-muted hover:text-foreground"
+                >
+                  Edit overlays
+                </Link>
+              )}
           </div>
           <PublishJobsPanel workspaceId={rendered.workspaceId} />
           {youtubeAccount !== undefined ? (
             <PublishForm
               defaultTitle={rendered.clipCandidate?.suggestedTitle ?? ""}
-              defaultCaption={rendered.clipCandidate?.suggestedCaption ?? ""}
+              defaultCaption={
+                publishMetadataQuery.data?.description ??
+                rendered.clipCandidate?.suggestedCaption ??
+                ""
+              }
+              linksText={publishMetadataQuery.data?.linksText ?? ""}
               accountId={youtubeAccount.id}
               requireDisclosure={rendered.renderVariant === "monetized"}
               onPublish={(form) => publishMutation.mutate(form)}
@@ -295,6 +337,7 @@ const PublishJobsPanel = ({ workspaceId }: { workspaceId: string }) => {
 const PublishForm = ({
   defaultTitle,
   defaultCaption,
+  linksText,
   accountId,
   requireDisclosure,
   onPublish,
@@ -302,6 +345,7 @@ const PublishForm = ({
 }: {
   defaultTitle: string;
   defaultCaption: string;
+  linksText: string;
   accountId: string;
   requireDisclosure: boolean;
   onPublish: (form: {
@@ -327,12 +371,17 @@ const PublishForm = ({
         aria-label="Publish title"
       />
       <textarea
-        className="flex min-h-[80px] w-full rounded-lg border border-border bg-panel-2 px-3 py-2 text-sm"
+        className="flex min-h-[120px] w-full rounded-lg border border-border bg-panel-2 px-3 py-2 text-sm"
         value={caption}
         onChange={(e) => setCaption(e.target.value)}
-        placeholder="Description"
+        placeholder="Description (includes affiliate links when overlays are present)"
         aria-label="Publish caption"
       />
+      {linksText !== "" && (
+        <p className="text-xs text-muted">
+          Affiliate links block is included in the description above.
+        </p>
+      )}
       {requireDisclosure && (
         <label className="flex items-start gap-2 text-sm text-muted">
           <input

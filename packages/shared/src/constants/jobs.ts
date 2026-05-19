@@ -16,6 +16,7 @@ export const JOB_TYPES = [
   "analytics.rollup",
   "render.apply_overlays",
   "ai.suggest_overlays",
+  "ai.discover_amazon_product",
   "overlay.validate_urls",
 ] as const;
 
@@ -40,6 +41,7 @@ export const JOB_TYPE_TO_PRISMA: Record<
   | "analytics_rollup"
   | "render_apply_overlays"
   | "ai_suggest_overlays"
+  | "ai_discover_amazon_product"
   | "overlay_validate_urls"
 > = {
   "source.validate": "source_validate",
@@ -59,6 +61,7 @@ export const JOB_TYPE_TO_PRISMA: Record<
   "analytics.rollup": "analytics_rollup",
   "render.apply_overlays": "render_apply_overlays",
   "ai.suggest_overlays": "ai_suggest_overlays",
+  "ai.discover_amazon_product": "ai_discover_amazon_product",
   "overlay.validate_urls": "overlay_validate_urls",
 };
 

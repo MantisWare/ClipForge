@@ -5,6 +5,7 @@ import { handlePublish } from "./publish.js";
 import { handlePublishScheduled } from "./publish-scheduled.js";
 import { handleRenderClip } from "./render-clip.js";
 import { handleRenderApplyOverlays } from "./render-apply-overlays.js";
+import { handleDiscoverAmazonProduct } from "./discover-amazon-product.js";
 import { handleSuggestOverlays } from "./suggest-overlays.js";
 import { handleSourceImport } from "./source-import.js";
 import { handleExtractAudio } from "./extract-audio.js";
@@ -28,6 +29,7 @@ export const handlers: HandlerRegistry = {
   "render.clip": handleRenderClip,
   "render.apply_overlays": handleRenderApplyOverlays,
   "ai.suggest_overlays": handleSuggestOverlays,
+  "ai.discover_amazon_product": handleDiscoverAmazonProduct,
   "overlay.validate_urls": noop,
   "publish.youtube": handlePublish,
   "publish.tiktok": handlePublish,

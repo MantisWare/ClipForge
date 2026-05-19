@@ -44,10 +44,13 @@ export const POST = async (
     return quota.error;
   }
 
-  if (clip.status !== ClipStatus.approved) {
+  if (
+    clip.status !== ClipStatus.approved &&
+    clip.status !== ClipStatus.rendered
+  ) {
     return apiError(
       "VALIDATION_ERROR",
-      "Only approved clips can be rendered",
+      "Only approved or previously rendered clips can be rendered",
       400,
     );
   }

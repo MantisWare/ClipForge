@@ -142,8 +142,15 @@ export const ClipDetailClient = ({
         <p className="text-sm text-muted">Approve the clip to edit overlays.</p>
       )}
 
-      {tab === "render" && clip.status === "approved" && (
+      {tab === "render" &&
+        (clip.status === "approved" || clip.status === "rendered") && (
         <Card className="space-y-4 p-4">
+          {clip.status === "rendered" && (
+            <p className="text-sm text-muted">
+              Re-rendering creates a new output and replaces the previous render
+              for this clip.
+            </p>
+          )}
           {(stylesQuery.data?.length ?? 0) > 0 && (
             <label className="block text-xs text-muted">
               Caption style
@@ -181,7 +188,9 @@ export const ClipDetailClient = ({
         </Card>
       )}
 
-      {tab === "render" && clip.status !== "approved" && (
+      {tab === "render" &&
+        clip.status !== "approved" &&
+        clip.status !== "rendered" && (
         <p className="text-sm text-muted">Approve the clip to render.</p>
       )}
     </div>

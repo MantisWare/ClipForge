@@ -7,7 +7,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createReadStream } from "node:fs";
 import type { Readable } from "node:stream";
 
-const getS3Client = () => {
+export const getS3Client = () => {
   const endpoint = process.env.S3_ENDPOINT;
   const region = process.env.S3_REGION ?? "us-east-1";
   const accessKeyId = process.env.S3_ACCESS_KEY ?? "clipforge";

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.routers import health, score_clips, transcribe
+from app.routers import discover_product, health, score_clips, transcribe
 
 app = FastAPI(
     title="ClipForge Worker AI",
@@ -11,6 +11,7 @@ app = FastAPI(
 app.include_router(health.router)
 app.include_router(transcribe.router)
 app.include_router(score_clips.router)
+app.include_router(discover_product.router)
 
 
 @app.get("/")

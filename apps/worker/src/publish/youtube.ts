@@ -40,12 +40,18 @@ export const publishToYouTube = async (publishJobId: string): Promise<void> => {
     await downloadDirectUrl(url, workDir, "upload.mp4");
     const fileBuffer = await readFile(filePath);
 
+    const captionBody = job.caption?.trim() ?? "";
+    const extraHashtags =
+      captionBody.includes("#") || (job.hashtags?.length ?? 0) === 0
+        ? ""
+        : `\n\n${(job.hashtags ?? [])
+            .map((h) => (h.startsWith("#") ? h : `#${h}`))
+            .join(" ")}`;
+
     const metadata = {
       snippet: {
         title: job.title ?? "ClipForge Short",
-        description: [job.caption, ...(job.hashtags ?? []).map((h) => `#${h}`)]
-          .filter((x) => x !== undefined && x !== "")
-          .join("\n"),
+        description: `${captionBody}${extraHashtags}`.trim(),
         categoryId: "22",
       },
       status: {
