@@ -1,5 +1,8 @@
+import { loadMonorepoEnvFiles } from "@clipforge/shared/server";
 import { Worker } from "bullmq";
 import IORedis from "ioredis";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   markJobCompleted,
   markJobFailed,
@@ -29,6 +32,18 @@ const parsePayload = (data: unknown): JobPayload => {
 };
 
 const main = () => {
+  const repoRoot = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../..",
+  );
+  loadMonorepoEnvFiles(repoRoot);
+
+  const s3Endpoint = process.env.S3_ENDPOINT ?? "(not set)";
+  const s3Key = process.env.S3_ACCESS_KEY ?? "(not set)";
+  console.log(
+    `[worker] S3_ENDPOINT=${s3Endpoint} S3_ACCESS_KEY=${s3Key} CLIPFORGE_DOCKER=${process.env.CLIPFORGE_DOCKER ?? "0"}`,
+  );
+
   const connection = getConnection();
 
   const worker = new Worker(

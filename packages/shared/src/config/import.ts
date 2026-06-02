@@ -1,3 +1,6 @@
+import { resolveYtdlpPath } from "./resolve-ytdlp-path";
+import { resolveYoutubeApiKey } from "./youtube-api-key";
+
 export type ImportConfig = {
   maxSourceBytes: number;
   tempDir: string;
@@ -17,12 +20,8 @@ export const getImportConfig = (): ImportConfig => {
       ? 2_147_483_648
       : maxSourceBytes,
     tempDir: process.env.IMPORT_TEMP_DIR ?? "/tmp/clipforge",
-    ytdlpPath: process.env.YTDLP_PATH ?? "yt-dlp",
-    youtubeApiKey:
-      process.env.YOUTUBE_API_KEY !== undefined &&
-      process.env.YOUTUBE_API_KEY !== ""
-        ? process.env.YOUTUBE_API_KEY
-        : undefined,
+    ytdlpPath: resolveYtdlpPath(),
+    youtubeApiKey: resolveYoutubeApiKey(),
   };
 };
 

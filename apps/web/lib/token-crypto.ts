@@ -1,1 +1,1 @@
-export { decryptToken, encryptToken } from "@clipforge/shared";
+export { decryptToken, encryptToken } from "@clipforge/shared/server";

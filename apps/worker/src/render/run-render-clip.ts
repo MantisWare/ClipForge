@@ -3,10 +3,12 @@ import {
   generateAssSubtitles,
   getImportConfig,
   getRenderConfig,
-  getSignedDownloadUrl,
   hexToDrawtextColor,
-  uploadFileToS3,
 } from "@clipforge/shared";
+import {
+  downloadFileFromS3,
+  uploadFileToS3,
+} from "@clipforge/shared/server";
 import { enqueueFromWorker } from "../lib/enqueue-from-worker.js";
 import type { AssStyleTemplate } from "@clipforge/shared";
 import { ClipStatus, prisma, RenderStatus } from "@clipforge/database";
@@ -14,7 +16,6 @@ import ffmpeg from "fluent-ffmpeg";
 import { writeFile } from "node:fs/promises";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { downloadDirectUrl } from "../import/direct-url.js";
 import { fireRenderWebhook } from "../lib/render-webhook.js";
 
 export type RenderClipPayload = {
@@ -202,8 +203,11 @@ export const runRenderClip = async (payload: RenderClipPayload): Promise<void> =
   );
 
   try {
-    const signedUrl = await getSignedDownloadUrl(source.storageKey, 3600);
-    await downloadDirectUrl(signedUrl, workDir, "source.mp4");
+    await downloadFileFromS3(
+      source.storageKey,
+      sourcePath,
+      getImportConfig().maxSourceBytes,
+    );
 
     const startSec = clip.startMs / 1000;
     const endSec = clip.endMs / 1000;

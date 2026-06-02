@@ -2,7 +2,7 @@ import {
   buildSourceStorageKey,
   getSignedDownloadUrl,
   getSignedUploadUrl,
-} from "@clipforge/shared";
+} from "@clipforge/shared/server";
 
 export { buildSourceStorageKey, getSignedDownloadUrl, getSignedUploadUrl };
 

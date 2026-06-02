@@ -2,17 +2,18 @@ import {
   buildRenderedStorageKey,
   getImportConfig,
   getRenderConfig,
-  getSignedDownloadUrl,
   hexToDrawtextColor,
-  uploadFileToS3,
   type OverlaysManifest,
 } from "@clipforge/shared";
+import {
+  downloadFileFromS3,
+  uploadFileToS3,
+} from "@clipforge/shared/server";
 import { ClipStatus, prisma, RenderStatus, RenderVariant } from "@clipforge/database";
 import { writeFile } from "node:fs/promises";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { basename } from "node:path";
-import { downloadDirectUrl } from "../import/direct-url.js";
 import { fireRenderWebhook } from "../lib/render-webhook.js";
 import { mapClipOverlaysToRenderItems } from "./overlay-assets.js";
 import {
@@ -103,8 +104,8 @@ export const runApplyOverlays = async (
   );
 
   try {
-    const signedUrl = await getSignedDownloadUrl(cleanKey, 3600);
-    await downloadDirectUrl(signedUrl, workDir, "clean.mp4");
+    const config = getImportConfig();
+    await downloadFileFromS3(cleanKey, join(workDir, "clean.mp4"), config.maxSourceBytes);
 
     const imagePathByOverlayId = new Map<string, string>();
     for (const overlay of rendered.clipCandidate.clipOverlays) {
@@ -112,12 +113,15 @@ export const runApplyOverlays = async (
       if (storageKey === null || storageKey === undefined || storageKey === "") {
         continue;
       }
-      const signedUrl = await getSignedDownloadUrl(storageKey, 3600);
       const ext = basename(storageKey).includes(".")
         ? basename(storageKey).slice(basename(storageKey).lastIndexOf("."))
         : ".jpg";
       const filename = `product-${overlay.id}${ext}`;
-      await downloadDirectUrl(signedUrl, workDir, filename);
+      await downloadFileFromS3(
+        storageKey,
+        join(workDir, filename),
+        config.maxSourceBytes,
+      );
       imagePathByOverlayId.set(overlay.id, join(workDir, filename));
     }
 

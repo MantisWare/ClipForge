@@ -6,6 +6,7 @@
     "dev:web": "CLIPFORGE_DEV_WEB_ONLY=1 bash scripts/dev-turbo.sh",
     "dev:browser": "CLIPFORGE_WEB_ONLY=1 bash scripts/dev-turbo.sh",
     "dev:worker": "turbo dev --filter=@clipforge/worker",
+    "dev:worker-ai": "bash scripts/worker-ai-dev.sh",
     "dev:desktop": "pnpm --dir apps/desktop dev",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",

@@ -107,17 +107,26 @@ chmod +x start.sh start-docker.sh scripts/dev-common.sh
 
 ### What Docker provides
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| PostgreSQL 16 | 5432 | App database |
-| Redis 7 | 6379 | BullMQ job queue |
-| MinIO | 9000 / 9001 | S3-compatible object storage (console on 9001) |
+Docker uses **alternate host ports** so local Homebrew Postgres and Redis can keep using **5432** and **6379**:
 
-Defaults match [`.env.example`](.env.example):
+| Service | Host port (Docker) | Purpose |
+|---------|----------------------|---------|
+| PostgreSQL 16 | **5433** | App database (container 5432) |
+| Redis 7 | **6380** | BullMQ job queue (container 6379) |
+| MinIO | **9002** / **9003** | S3 API on 9002, console on 9003 (local MinIO may use 9000/9001) |
+
+`./start-docker.sh` loads [`infra/docker.env`](infra/docker.env):
 
 ```env
-DATABASE_URL="postgresql://clipforge:clipforge@localhost:5432/clipforge?schema=public"
-REDIS_URL="redis://localhost:6379"
+DATABASE_URL="postgresql://clipforge:clipforge@localhost:5433/clipforge?schema=public"
+REDIS_URL="redis://localhost:6380"
+S3_ENDPOINT="http://localhost:9002"
+S3_PUBLIC_URL="http://localhost:9002"
+```
+
+`./start.sh` (no Docker) uses [`.env.example`](.env.example) defaults on **5432** / **6379** and MinIO **9000** / **9001**:
+
+```env
 S3_ENDPOINT="http://localhost:9000"
 S3_ACCESS_KEY="clipforge"
 S3_SECRET_KEY="clipforge_secret"
@@ -135,7 +144,7 @@ S3_BUCKET="clipforge-media"
    ```
 
 3. **First time only:** create the MinIO bucket  
-   - Open http://localhost:9001  
+   - Open http://localhost:9003 (Docker console; `./start.sh` uses http://localhost:9001)  
    - Login: `clipforge` / `clipforge_secret`  
    - Create bucket: `clipforge-media`
 
@@ -153,7 +162,7 @@ docker compose -f infra/docker-compose.yml logs -f postgres
 
 | Issue | Fix |
 |-------|-----|
-| Port 5432 already in use | Stop local Postgres or change the compose port mapping |
+| Port 5433, 6380, 9002, or 9003 in use | Another process holds Docker’s mapped ports; change `infra/docker-compose.yml` or free the port |
 | `pg_isready` timeout | `docker compose -f infra/docker-compose.yml logs postgres` |
 | MinIO upload errors later | Ensure bucket `clipforge-media` exists |
 
@@ -168,7 +177,7 @@ You supply **PostgreSQL** yourself. **Redis** is optional for the scaffold (jobs
 ```bash
 # PostgreSQL (required)
 brew install postgresql@16
-brew services start postgresql@16
+brew services start postgresql@16   # or let ./start.sh start it automatically
 createuser -s clipforge 2>/dev/null || true
 createdb -O clipforge clipforge 2>/dev/null || createdb clipforge
 psql postgres -c "ALTER USER clipforge WITH PASSWORD 'clipforge';" 2>/dev/null || true

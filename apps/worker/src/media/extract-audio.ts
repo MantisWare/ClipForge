@@ -1,14 +1,12 @@
+import { buildSourceAudioStorageKey, getImportConfig } from "@clipforge/shared";
 import {
-  buildSourceAudioStorageKey,
-  getImportConfig,
-  getSignedDownloadUrl,
+  downloadFileFromS3,
   uploadFileToS3,
-} from "@clipforge/shared";
+} from "@clipforge/shared/server";
 import { prisma, SourceStatus } from "@clipforge/database";
 import ffmpeg from "fluent-ffmpeg";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
-import { downloadDirectUrl } from "../import/direct-url.js";
 import { enqueueJob } from "../lib/queue.js";
 
 export type ExtractAudioPayload = {
@@ -67,8 +65,11 @@ export const runExtractAudio = async (
   const wavPath = join(workDir, "audio.wav");
 
   try {
-    const signedUrl = await getSignedDownloadUrl(source.storageKey, 600);
-    await downloadDirectUrl(signedUrl, workDir, "source.mp4");
+    await downloadFileFromS3(
+      source.storageKey,
+      videoPath,
+      config.maxSourceBytes,
+    );
     await extractAudioToWav(videoPath, wavPath);
     await uploadFileToS3(audioStorageKey, wavPath, "audio/wav");
 

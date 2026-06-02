@@ -1,6 +1,10 @@
 import { cookies } from "next/headers";
 import { prisma, type Workspace } from "@clipforge/database";
-import { assertWorkspaceAccess, getUserWorkspaces } from "@/lib/workspace";
+import {
+  assertWorkspaceAccess,
+  ensureDefaultWorkspace,
+  getUserWorkspaces,
+} from "@/lib/workspace";
 
 export const WORKSPACE_COOKIE = "clipforge_workspace_id";
 
@@ -27,13 +31,5 @@ export const getActiveWorkspace = async (
     return workspaces[0]!;
   }
 
-  return prisma.workspace.create({
-    data: {
-      name: "My Workspace",
-      ownerId: userId,
-      members: {
-        create: { userId, role: "owner" },
-      },
-    },
-  });
+  return ensureDefaultWorkspace(userId);
 };

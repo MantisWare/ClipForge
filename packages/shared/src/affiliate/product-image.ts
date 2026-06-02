@@ -1,5 +1,5 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { buildProductLinkImageStorageKey } from "../config/overlay.js";
+import { buildProductLinkImageStorageKey } from "../config/overlay";
 import { getS3Bucket, getS3Client } from "../storage/s3.js";
 
 const extensionFromContentType = (

@@ -69,7 +69,8 @@ export const requireWorkspaceRole = async (
   return roleRank[role] >= roleRank[minRole];
 };
 
-export const getOrCreateDefaultWorkspace = async (userId: string) => {
+/** Default workspace for a user that already exists in the database. */
+export const ensureDefaultWorkspace = async (userId: string) => {
   const existing = await prisma.workspace.findFirst({
     where: { ownerId: userId },
     orderBy: { createdAt: "asc" },
@@ -92,3 +93,6 @@ export const getOrCreateDefaultWorkspace = async (userId: string) => {
     },
   });
 };
+
+/** @deprecated Use ensureDefaultWorkspace */
+export const getOrCreateDefaultWorkspace = ensureDefaultWorkspace;

@@ -1,8 +1,8 @@
 import {
   buildSourceAudioStorageKey,
   getClipScoringConfig,
-  getSignedDownloadUrl,
 } from "@clipforge/shared";
+import { getSignedDownloadUrl } from "@clipforge/shared/server";
 import { prisma, SourceStatus } from "@clipforge/database";
 import { enqueueJob } from "../lib/queue.js";
 import { transcribeAudio } from "../lib/worker-ai-client.js";

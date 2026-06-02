@@ -20,17 +20,36 @@ export const transcribeAudio = async (
   const timeout = setTimeout(() => controller.abort(), 600_000);
 
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        signedUrl,
-        storageKey,
-        model: config.whisperModel,
-        device: config.whisperDevice,
-      }),
-      signal: controller.signal,
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signedUrl,
+          storageKey,
+          model: config.whisperModel,
+          device: config.whisperDevice,
+        }),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      const cause =
+        error instanceof Error && "cause" in error
+          ? (error.cause as Error | undefined)?.message
+          : undefined;
+      const hint =
+        cause !== undefined && cause !== ""
+          ? ` (${cause})`
+          : "";
+      throw new Error(
+        `Cannot reach worker-ai at ${config.workerAiUrl}${hint}. ` +
+          "Start it: bash scripts/worker-ai-dev.sh — or cd services/worker-ai, " +
+          "create .venv, pip install -r requirements.txt, " +
+          "uvicorn app.main:app --port 8002",
+        { cause: error instanceof Error ? error : undefined },
+      );
+    }
 
     if (!res.ok) {
       const text = await res.text();

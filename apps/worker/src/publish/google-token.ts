@@ -1,4 +1,4 @@
-import { decryptToken, encryptToken } from "@clipforge/shared";
+import { decryptToken, encryptToken } from "@clipforge/shared/server";
 import type { ConnectedAccount } from "@clipforge/database";
 import { prisma } from "@clipforge/database";
 

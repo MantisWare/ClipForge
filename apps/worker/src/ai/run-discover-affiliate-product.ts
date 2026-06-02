@@ -2,9 +2,11 @@ import {
   aiProductDiscoveryResultSchema,
   mapWorkspaceAffiliateSettings,
   productCategorySchema,
+} from "@clipforge/shared";
+import {
   resolveAffiliateProductChain,
   uploadProductImageFromUrl,
-} from "@clipforge/shared";
+} from "@clipforge/shared/server";
 import { prisma, type Prisma } from "@clipforge/database";
 import { discoverAmazonProductWithAi } from "../lib/worker-ai-client.js";
 import type { JobPayload } from "../handlers/types.js";

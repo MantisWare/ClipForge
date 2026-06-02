@@ -2,8 +2,11 @@ import {
   buildSourceStorageKey,
   getImportConfig,
   getTranscribeConfig,
-  uploadFileToS3,
 } from "@clipforge/shared";
+import {
+  downloadFileFromS3,
+  uploadFileToS3,
+} from "@clipforge/shared/server";
 import { enqueueJob } from "../lib/queue.js";
 import { prisma, SourceStatus } from "@clipforge/database";
 import { mkdir, rm } from "node:fs/promises";
@@ -48,9 +51,8 @@ export const runSourceImport = async (payload: ImportPayload): Promise<void> => 
   try {
     if (payload.skipDownload === true && source.storageKey !== null) {
       storageKey = source.storageKey ?? storageKey;
-      const { getSignedDownloadUrl } = await import("@clipforge/shared");
-      const url = await getSignedDownloadUrl(storageKey, 600);
-      localPath = await downloadDirectUrl(url, workDir, "probe.mp4");
+      localPath = join(workDir, "probe.mp4");
+      await downloadFileFromS3(storageKey, localPath, config.maxSourceBytes);
     } else if (source.sourceType === "youtube") {
       localPath = await downloadYouTubeVideo(source.sourceUrl, workDir);
     } else if (
@@ -67,9 +69,8 @@ export const runSourceImport = async (payload: ImportPayload): Promise<void> => 
         throw new Error("Upload source missing storageKey");
       }
       storageKey = source.storageKey;
-      const { getSignedDownloadUrl } = await import("@clipforge/shared");
-      const url = await getSignedDownloadUrl(storageKey, 600);
-      localPath = await downloadDirectUrl(url, workDir, "source.mp4");
+      localPath = join(workDir, "source.mp4");
+      await downloadFileFromS3(storageKey, localPath, config.maxSourceBytes);
     } else {
       throw new Error(`Unsupported source type: ${source.sourceType}`);
     }

@@ -1,12 +1,10 @@
 import { prisma, PublishJobStatus } from "@clipforge/database";
 import { ensureGoogleAccessToken } from "./google-token.js";
 import { readFile } from "node:fs/promises";
-import { getSignedDownloadUrl } from "@clipforge/shared";
+import { downloadFileFromS3 } from "@clipforge/shared/server";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { getImportConfig } from "@clipforge/shared";
-import { downloadDirectUrl } from "../import/direct-url.js";
-
 export const publishToYouTube = async (publishJobId: string): Promise<void> => {
   const job = await prisma.publishJob.findUnique({
     where: { id: publishJobId },
@@ -36,8 +34,11 @@ export const publishToYouTube = async (publishJobId: string): Promise<void> => {
   const filePath = join(workDir, "upload.mp4");
 
   try {
-    const url = await getSignedDownloadUrl(job.renderedClip.storageKey, 600);
-    await downloadDirectUrl(url, workDir, "upload.mp4");
+    await downloadFileFromS3(
+      job.renderedClip.storageKey,
+      filePath,
+      config.maxSourceBytes,
+    );
     const fileBuffer = await readFile(filePath);
 
     const captionBody = job.caption?.trim() ?? "";

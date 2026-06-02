@@ -17,14 +17,31 @@ export const downloadYouTubeVideo = async (
 
   const args = [
     "--no-playlist",
+    "--no-warnings",
+    "--retries",
+    "3",
+    "--fragment-retries",
+    "3",
     "-f",
-    "best[ext=mp4]/best",
+    "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/bv*+ba/b",
     "--merge-output-format",
     "mp4",
+    "--extractor-args",
+    "youtube:player_client=android,web",
     "-o",
     outputTemplate,
     sourceUrl,
   ];
+
+  const cookiesFromBrowser = process.env.YTDLP_COOKIES_FROM_BROWSER?.trim();
+  if (cookiesFromBrowser !== undefined && cookiesFromBrowser !== "") {
+    args.unshift("--cookies-from-browser", cookiesFromBrowser);
+  }
+
+  const cookiesFile = process.env.YTDLP_COOKIES_FILE?.trim();
+  if (cookiesFile !== undefined && cookiesFile !== "") {
+    args.unshift("--cookies", cookiesFile);
+  }
 
   try {
     await execFileAsync(config.ytdlpPath, args, {
@@ -34,6 +51,11 @@ export const downloadYouTubeVideo = async (
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "yt-dlp download failed";
+    if (message.includes("ENOENT")) {
+      throw new Error(
+        `yt-dlp not found (tried "${config.ytdlpPath}"). Install it (macOS: brew install yt-dlp) or set YTDLP_PATH in .env to the full binary path.`,
+      );
+    }
     throw new Error(`YouTube download failed: ${message}`);
   }
 
