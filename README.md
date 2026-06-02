@@ -59,6 +59,7 @@ ClipForge/
 ├── developer.md           # Docker & local dev setup
 ├── start.sh               # Start without Docker
 ├── start-docker.sh        # Start with Docker infra
+├── stop-docker.sh         # Stop Docker infra
 ├── docs/                  # Product spec
 ├── CHECKLIST.md           # Implementation progress
 └── README.md
@@ -81,10 +82,13 @@ ClipForge/
 ### One-command start
 
 ```bash
-chmod +x start.sh start-docker.sh
+chmod +x start.sh start-docker.sh stop-docker.sh
 
 # With Docker (Postgres + Redis + MinIO)
 ./start-docker.sh
+
+# Stop Docker infra when done
+./stop-docker.sh
 
 # Without Docker (local or hosted Postgres must already be running)
 ./start.sh

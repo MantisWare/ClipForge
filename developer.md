@@ -7,6 +7,7 @@ Quick launch:
 | Script | Use when |
 |--------|----------|
 | [`./start-docker.sh`](start-docker.sh) | You have Docker Desktop / Docker Engine |
+| [`./stop-docker.sh`](stop-docker.sh) | Stop Docker infra started by `start-docker.sh` |
 | [`./start.sh`](start.sh) | Postgres (and optionally Redis) already running locally or in the cloud |
 
 Both scripts will:
@@ -98,7 +99,7 @@ uvicorn app.main:app --reload --port 8002
 Make scripts executable once:
 
 ```bash
-chmod +x start.sh start-docker.sh scripts/dev-common.sh
+chmod +x start.sh start-docker.sh stop-docker.sh scripts/dev-common.sh
 ```
 
 ---
@@ -154,7 +155,8 @@ S3_BUCKET="clipforge-media"
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d    # start infra
-docker compose -f infra/docker-compose.yml down   # stop infra
+./stop-docker.sh                                    # stop infra (or: docker compose ... down)
+./stop-docker.sh --volumes                          # stop and wipe local DB/Redis/MinIO data
 docker compose -f infra/docker-compose.yml logs -f postgres
 ```
 

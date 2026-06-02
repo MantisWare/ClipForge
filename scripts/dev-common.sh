@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared setup helpers for start.sh and start-docker.sh
+# Shared setup helpers for start.sh, start-docker.sh, and stop-docker.sh
 
 set -euo pipefail
 

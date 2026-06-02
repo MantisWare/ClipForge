@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # ClipForge — development with Docker (Postgres, Redis, MinIO)
 
-docker compose -f infra/docker-compose.yml down
-
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
