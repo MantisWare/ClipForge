@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # ClipForge — development with Docker (Postgres, Redis, MinIO)
 
+docker compose -f infra/docker-compose.yml down
+
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,8 +24,14 @@ fi
 
 ensure_env_files "${ROOT}"
 ensure_auth_secret "${ROOT}"
+load_env "${ROOT}"
+load_docker_env "${ROOT}"
+export CLIPFORGE_DOCKER=1
+
+verify_docker_host_ports
 
 log "Starting infrastructure (Postgres, Redis, MinIO)..."
+log "  Postgres → localhost:5433 · Redis → localhost:6380 (see infra/docker.env)"
 docker compose -f "${COMPOSE_FILE}" up -d
 
 log "Waiting for Postgres..."
@@ -38,8 +46,7 @@ until docker compose -f "${COMPOSE_FILE}" exec -T postgres pg_isready -U clipfor
 done
 log "Postgres is ready"
 
-warn "Create MinIO bucket 'clipforge-media' at http://localhost:9001 if not already done"
-warn "  Login: clipforge / clipforge_secret"
+ensure_minio_bucket
 
 install_deps "${ROOT}"
 setup_database "${ROOT}"

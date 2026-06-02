@@ -9,6 +9,10 @@ source "${ROOT}/scripts/dev-common.sh"
 
 prepare_web_dev_env "${ROOT}"
 
+if [[ "${CLIPFORGE_SKIP_WORKER_AI:-0}" != "1" && "${AUTO_TRANSCRIBE:-true}" != "false" ]]; then
+  ensure_worker_ai "${ROOT}" || true
+fi
+
 FILTERS=(--filter=@clipforge/web --filter=@clipforge/worker)
 
 if [[ "${CLIPFORGE_WEB_ONLY:-0}" != "1" && "${CLIPFORGE_DEV_WEB_ONLY:-0}" != "1" ]]; then

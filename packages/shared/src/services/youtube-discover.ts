@@ -59,6 +59,32 @@ const mapVideo = (video: YouTubeVideoItem): DiscoverVideoItem | null => {
   };
 };
 
+const formatYouTubeApiError = async (
+  operation: string,
+  res: Response,
+): Promise<string> => {
+  let detail = "";
+  try {
+    const body = (await res.json()) as {
+      error?: { message?: string; errors?: Array<{ reason?: string }> };
+    };
+    detail = body.error?.message ?? "";
+    const reason = body.error?.errors?.[0]?.reason;
+    if (reason !== undefined && reason !== "") {
+      detail = detail !== "" ? `${detail} (${reason})` : reason;
+    }
+  } catch {
+    detail = await res.text();
+  }
+  if (res.status === 403 && detail.includes("has not been used")) {
+    return `YouTube Data API v3 is not enabled for this API key. Enable it in Google Cloud Console, then retry.`;
+  }
+  if (res.status === 403) {
+    return `YouTube API denied the request (${operation}): ${detail || res.statusText}`;
+  }
+  return `YouTube ${operation} failed (${res.status}): ${detail || res.statusText}`;
+};
+
 const formatDuration = (seconds: number): string => {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
@@ -81,7 +107,7 @@ const fetchVideoDetails = async (
     `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`,
   );
   if (!res.ok) {
-    throw new Error(`YouTube videos.list failed: ${res.status}`);
+    throw new Error(await formatYouTubeApiError("videos.list", res));
   }
   const data = (await res.json()) as { items?: YouTubeVideoItem[] };
   const map = new Map<string, YouTubeVideoItem>();
@@ -116,8 +142,7 @@ export const fetchYouTubeSearch = async (
     `https://www.googleapis.com/youtube/v3/search?${params.toString()}`,
   );
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`YouTube search failed: ${res.status} ${text}`);
+    throw new Error(await formatYouTubeApiError("search", res));
   }
 
   const data = (await res.json()) as { items?: YouTubeSearchItem[] };
@@ -159,8 +184,7 @@ export const fetchYouTubeMostPopular = async (
     `https://www.googleapis.com/youtube/v3/videos?${params.toString()}`,
   );
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`YouTube mostPopular failed: ${res.status} ${text}`);
+    throw new Error(await formatYouTubeApiError("mostPopular", res));
   }
 
   const data = (await res.json()) as { items?: YouTubeVideoItem[] };

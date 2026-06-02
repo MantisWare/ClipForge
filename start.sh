@@ -18,6 +18,10 @@ ensure_env_files "${ROOT}"
 ensure_auth_secret "${ROOT}"
 load_env "${ROOT}"
 
+if ! ensure_brew_postgres_service; then
+  warn "Could not auto-start PostgreSQL via Homebrew"
+fi
+
 if ! check_postgres; then
   err "PostgreSQL is required. Options:"
   err "  • macOS: brew install postgresql@16 && brew services start postgresql@16"

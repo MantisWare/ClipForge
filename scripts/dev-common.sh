@@ -62,6 +62,33 @@ load_env() {
   fi
 }
 
+# apps/web/.env overrides root (e.g. YOUTUBE_API_KEY may be empty in root .env.example copy).
+load_web_env() {
+  local root="$1"
+  local web_env="${root}/apps/web/.env"
+  if [[ -f "${web_env}" ]]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "${web_env}"
+    set +a
+  fi
+}
+
+# Override DATABASE_URL / REDIS_URL for ./start-docker.sh (non-default host ports).
+load_docker_env() {
+  local root="$1"
+  local docker_env="${root}/infra/docker.env"
+  if [[ ! -f "${docker_env}" ]]; then
+    err "Missing ${docker_env}"
+    return 1
+  fi
+  set -a
+  # shellcheck disable=SC1091
+  source "${docker_env}"
+  set +a
+  export CLIPFORGE_DOCKER=1
+}
+
 ensure_env_files() {
   local root="$1"
   if [[ ! -f "${root}/.env" ]]; then
@@ -103,6 +130,9 @@ install_deps() {
 setup_database() {
   local root="$1"
   load_env "${root}"
+  if [[ "${CLIPFORGE_DOCKER:-0}" == "1" ]]; then
+    load_docker_env "${root}"
+  fi
   export DATABASE_URL="${DATABASE_URL:-postgresql://clipforge:clipforge@localhost:5432/clipforge?schema=public}"
 
   log "Generating Prisma client..."
@@ -179,6 +209,51 @@ find_free_port() {
   echo "${port}"
 }
 
+find_ytdlp_bin() {
+  if [[ -n "${YTDLP_PATH:-}" && -x "${YTDLP_PATH}" ]]; then
+    echo "${YTDLP_PATH}"
+    return 0
+  fi
+  if command -v yt-dlp >/dev/null 2>&1; then
+    command -v yt-dlp
+    return 0
+  fi
+  local candidate
+  for candidate in /opt/homebrew/bin/yt-dlp /usr/local/bin/yt-dlp; do
+    if [[ -x "${candidate}" ]]; then
+      echo "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+ensure_minio_bucket() {
+  local bucket="${S3_BUCKET:-clipforge-media}"
+  if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx clipforge-minio; then
+    return 0
+  fi
+  if docker exec clipforge-minio mc alias set local http://127.0.0.1:9000 \
+    "${S3_ACCESS_KEY:-clipforge}" "${S3_SECRET_KEY:-clipforge_secret}" >/dev/null 2>&1; then
+    docker exec clipforge-minio mc mb "local/${bucket}" --ignore-existing >/dev/null 2>&1 || true
+    log "MinIO bucket ready: ${bucket}"
+  else
+    warn "Could not configure MinIO CLI — create bucket '${bucket}' at http://localhost:9003"
+  fi
+}
+
+ensure_ytdlp() {
+  local bin
+  if bin="$(find_ytdlp_bin)"; then
+    export YTDLP_PATH="${bin}"
+    return 0
+  fi
+  warn "yt-dlp not found — YouTube imports will fail until installed."
+  warn "  macOS: brew install yt-dlp"
+  warn "  Or set YTDLP_PATH in .env to the full path of the yt-dlp binary."
+  return 1
+}
+
 # Sets PORT, AUTH_URL, and YOUTUBE_OAUTH_REDIRECT_URI for the web dev server.
 prepare_web_dev_env() {
   local root="$1"
@@ -187,6 +262,20 @@ prepare_web_dev_env() {
   local max_port="${CLIPFORGE_WEB_PORT_MAX:-4999}"
 
   load_env "${root}"
+  # Docker infra must load after root and win over apps/web/.env (MinIO 9002, keys).
+  if [[ "${CLIPFORGE_DOCKER:-0}" == "1" ]]; then
+    load_docker_env "${root}"
+    load_web_env "${root}"
+    load_docker_env "${root}"
+  else
+    load_web_env "${root}"
+  fi
+
+  ensure_ytdlp || true
+
+  if [[ "${CLIPFORGE_DOCKER:-0}" == "1" ]]; then
+    log "Docker mode — S3_ENDPOINT=${S3_ENDPOINT:-unset} DATABASE_URL (host)=$(echo "${DATABASE_URL:-}" | sed 's/clipforge:clipforge@/…@/')"
+  fi
 
   if [[ -z "${PORT:-}" ]]; then
     PORT="$(find_free_port "${host}" "${start_port}" "${max_port}")"
@@ -223,6 +312,18 @@ find_psql() {
 postgres_url_host() {
   local url="$1"
   echo "${url}" | sed -n 's|.*@\([^:/]*\).*|\1|p'
+}
+
+postgres_url_port() {
+  local url="$1"
+  local host_port port
+  host_port="$(echo "${url}" | sed -n 's|.*@\([^/]*\).*|\1|p')"
+  port="$(echo "${host_port}" | sed -n 's|.*:\([0-9]*\)$|\1|p')"
+  if [[ -n "${port}" ]]; then
+    echo "${port}"
+  else
+    echo "5432"
+  fi
 }
 
 postgres_can_connect() {
@@ -280,13 +381,124 @@ SQL
   return 1
 }
 
+ensure_homebrew_in_path() {
+  local dir
+  for dir in /opt/homebrew/bin /usr/local/bin; do
+    if [[ -d "${dir}" && ":${PATH}:" != *":${dir}:"* ]]; then
+      export PATH="${dir}:${PATH}"
+    fi
+  done
+}
+
+find_brew_postgresql_formula() {
+  ensure_homebrew_in_path
+
+  local formula prefix base
+  if command -v brew >/dev/null 2>&1; then
+    for formula in postgresql@17 postgresql@16 postgresql@15 postgresql@14 postgresql; do
+      prefix="$(brew --prefix "${formula}" 2>/dev/null)" || continue
+      if [[ -n "${prefix}" && -d "${prefix}" ]]; then
+        echo "${formula}"
+        return 0
+      fi
+    done
+  fi
+
+  for formula in postgresql@17 postgresql@16 postgresql@15 postgresql@14 postgresql; do
+    for base in /opt/homebrew/opt /usr/local/opt; do
+      if [[ -d "${base}/${formula}" ]]; then
+        echo "${formula}"
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
+# On macOS, start Homebrew PostgreSQL when DATABASE_URL points at localhost and the port is down.
+ensure_brew_postgres_service() {
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    return 0
+  fi
+
+  ensure_homebrew_in_path
+
+  local url="${DATABASE_URL:-postgresql://clipforge:clipforge@localhost:5432/clipforge?schema=public}"
+  local host port formula tries
+  host="$(postgres_url_host "${url}")"
+  port="$(postgres_url_port "${url}")"
+  host="${host:-localhost}"
+
+  if [[ "${host}" != "localhost" && "${host}" != "127.0.0.1" ]]; then
+    return 0
+  fi
+
+  if port_open "${host}" "${port}"; then
+    return 0
+  fi
+
+  formula="$(find_brew_postgresql_formula)" || {
+    warn "No Homebrew PostgreSQL install found (postgresql@15, @16, etc.)"
+    return 1
+  }
+
+  if ! command -v brew >/dev/null 2>&1; then
+    warn "Homebrew is not available; install from https://brew.sh"
+    return 1
+  fi
+
+  log "PostgreSQL not running — starting Homebrew service (${formula})..."
+  if ! brew services start "${formula}" 2>&1; then
+    warn "brew services start ${formula} failed"
+    return 1
+  fi
+
+  tries=0
+  while [[ "${tries}" -lt 30 ]]; do
+    if port_open "${host}" "${port}"; then
+      log "PostgreSQL is ready at ${host}:${port} (${formula})"
+      return 0
+    fi
+    sleep 1
+    tries=$((tries + 1))
+  done
+
+  warn "Homebrew started ${formula} but ${host}:${port} is still not reachable"
+  return 1
+}
+
+# Docker uses alternate host ports so local Homebrew Postgres/Redis can stay on 5432/6379.
+verify_docker_host_ports() {
+  local blocked=()
+  if port_open "localhost" "5433"; then
+    blocked+=("5433 (Docker Postgres — local Postgres may use 5432)")
+  fi
+  if port_open "localhost" "6380"; then
+    blocked+=("6380 (Docker Redis — local Redis may use 6379)")
+  fi
+  if port_open "localhost" "9002"; then
+    blocked+=("9002 (Docker MinIO API)")
+  fi
+  if port_open "localhost" "9003"; then
+    blocked+=("9003 (Docker MinIO console)")
+  fi
+
+  if [[ ${#blocked[@]} -gt 0 ]]; then
+    err "Docker cannot bind — port(s) already in use: ${blocked[*]}"
+    err "Change mappings in infra/docker-compose.yml or stop the process using the port."
+    exit 1
+  fi
+
+  log "Docker host ports: Postgres 5433, Redis 6380, MinIO 9002 (API) / 9003 (console)"
+  log "Local Postgres/Redis/MinIO can keep 5432, 6379, 9000, 9001"
+}
+
 check_postgres() {
   local url="${DATABASE_URL:-postgresql://clipforge:clipforge@localhost:5432/clipforge?schema=public}"
   local host port
   host="$(postgres_url_host "${url}")"
-  port="$(echo "${url}" | sed -n 's|.*:\([0-9]*\)/.*|\1|p')"
+  port="$(postgres_url_port "${url}")"
   host="${host:-localhost}"
-  port="${port:-5432}"
 
   if port_open "${host}" "${port}"; then
     log "PostgreSQL reachable at ${host}:${port}"
@@ -312,9 +524,29 @@ check_redis() {
   return 1
 }
 
+ensure_worker_ai() {
+  local root="$1"
+  local script="${root}/scripts/worker-ai-dev.sh"
+  if [[ ! -f "${script}" ]]; then
+    warn "Missing ${script}"
+    return 1
+  fi
+  chmod +x "${script}" 2>/dev/null || true
+  if bash "${script}"; then
+    return 0
+  fi
+  warn "worker-ai not running — set AUTO_TRANSCRIBE=false or start manually:"
+  warn "  cd services/worker-ai && python3 -m venv .venv && source .venv/bin/activate"
+  warn "  pip install -r requirements.txt && uvicorn app.main:app --reload --port 8002"
+  return 1
+}
+
 start_app() {
   local root="$1"
   prepare_web_dev_env "${root}"
+  if [[ "${CLIPFORGE_SKIP_WORKER_AI:-0}" != "1" && "${AUTO_TRANSCRIBE:-true}" != "false" ]]; then
+    ensure_worker_ai "${root}" || true
+  fi
   if [[ "${CLIPFORGE_WEB_ONLY:-0}" == "1" ]]; then
     log "Starting Next.js dev server at http://localhost:${PORT} (browser)"
   else
