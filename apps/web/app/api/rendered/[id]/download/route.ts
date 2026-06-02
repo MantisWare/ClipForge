@@ -1,7 +1,7 @@
 import { apiError, apiSuccess } from "@/lib/api";
 import { requireUser, requireWorkspace } from "@/lib/api-auth";
 import { prisma, RenderStatus } from "@clipforge/database";
-import { getSignedDownloadUrl } from "@clipforge/shared";
+import { getSignedDownloadUrl } from "@clipforge/shared/server";
 
 export const GET = async (
   request: Request,

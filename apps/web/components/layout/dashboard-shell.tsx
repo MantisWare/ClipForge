@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
+import { isPlatformAdmin } from "@/lib/admin-auth";
 import { auth, getSessionUserId, signOut } from "@/lib/auth";
 import { getActiveWorkspace } from "@/lib/workspace-context";
 import { Button } from "@/components/ui/button";
@@ -18,10 +19,11 @@ export const DashboardShell = async ({
   }
 
   const workspace = await getActiveWorkspace(userId);
+  const showAdmin = isPlatformAdmin(userId);
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar />
+      <Sidebar showAdmin={showAdmin} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-16 items-center justify-between gap-4 border-b border-border bg-panel px-6">
           <WorkspaceSwitcher

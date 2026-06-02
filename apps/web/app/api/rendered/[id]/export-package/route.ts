@@ -4,7 +4,7 @@ import { buildPublishMetadataForRendered } from "@/lib/publish-description";
 import {
   buildRenderedStorageKey,
   getSignedDownloadUrl,
-} from "@clipforge/shared";
+} from "@clipforge/shared/server";
 import { prisma, RenderStatus } from "@clipforge/database";
 
 export const GET = async (

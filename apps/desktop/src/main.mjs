@@ -59,7 +59,8 @@ const waitForHttp = async (url, maxMs = 180_000) => {
 let mainWindow = null;
 
 const createWindow = async (port) => {
-  const appUrl = `http://127.0.0.1:${port}`;
+  // Use localhost so Auth.js redirects (AUTH_URL) stay on the same host as cookies.
+  const appUrl = `http://localhost:${port}`;
 
   mainWindow = new BrowserWindow({
     width: 1280,

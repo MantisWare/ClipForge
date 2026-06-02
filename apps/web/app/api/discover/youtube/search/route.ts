@@ -28,7 +28,7 @@ export const GET = async (request: Request) => {
   if (config.youtubeApiKey === undefined) {
     return apiError(
       "NOT_IMPLEMENTED",
-      "YOUTUBE_API_KEY is required for discovery",
+      "YouTube Data API key missing. Set YOUTUBE_API_KEY in the repo root .env or apps/web/.env (YouTube Data API v3 enabled), then restart the dev server.",
       503,
     );
   }

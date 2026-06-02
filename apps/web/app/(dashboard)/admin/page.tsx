@@ -1,6 +1,7 @@
+import { AdminAccessDenied } from "@/components/admin/admin-access-denied";
 import { AdminClient } from "@/components/admin/admin-client";
 import { getSessionUserId } from "@/lib/auth";
-import { requireAdmin } from "@/lib/admin-auth";
+import { isPlatformAdmin } from "@/lib/admin-auth";
 import { redirect } from "next/navigation";
 
 export default async function AdminPage() {
@@ -9,9 +10,8 @@ export default async function AdminPage() {
     redirect("/sign-in");
   }
 
-  const admin = requireAdmin(userId);
-  if ("error" in admin) {
-    redirect("/dashboard");
+  if (!isPlatformAdmin(userId)) {
+    return <AdminAccessDenied userId={userId} />;
   }
 
   return (
@@ -19,7 +19,7 @@ export default async function AdminPage() {
       <div>
         <h1 className="text-2xl font-semibold">Admin</h1>
         <p className="mt-1 text-sm text-muted">
-          Platform operations — requires ADMIN_USER_IDS.
+          Platform operations — queue health and workspace management.
         </p>
       </div>
       <AdminClient />

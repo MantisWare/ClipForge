@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardTitle } from "@/components/ui/card";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AffiliateFieldLabel } from "@/components/monetization/affiliate-field-label";
 import { OverlayAnalyticsSummary } from "@/components/monetization/overlay-analytics-summary";
 import { useEffect, useState } from "react";
 
@@ -204,55 +205,67 @@ export const MonetizationClient = ({ workspaceId }: Props) => {
           any combination — at least one is required.
         </CardDescription>
         <div className="mb-4 grid gap-4 sm:grid-cols-2">
-          <label className="block text-xs text-muted">
-            Amazon Associates tag
+          <label className="block">
+            <AffiliateFieldLabel networkId="amazon_tag">
+              Amazon Associates tag
+            </AffiliateFieldLabel>
             <input
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               value={amazonTag}
               onChange={(e) => setAmazonTag(e.target.value)}
               placeholder="yoursite-20"
             />
           </label>
-          <label className="block text-xs text-muted">
-            Amazon marketplace
+          <label className="block">
+            <AffiliateFieldLabel networkId="amazon_marketplace">
+              Amazon marketplace
+            </AffiliateFieldLabel>
             <input
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               value={amazonMarketplace}
               onChange={(e) => setAmazonMarketplace(e.target.value)}
               placeholder="www.amazon.com"
             />
           </label>
-          <label className="block text-xs text-muted">
-            eBay Partner campaign ID
+          <label className="block">
+            <AffiliateFieldLabel networkId="ebay">
+              eBay Partner campaign ID
+            </AffiliateFieldLabel>
             <input
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               value={ebayCampaignId}
               onChange={(e) => setEbayCampaignId(e.target.value)}
               placeholder="5338782847"
             />
           </label>
-          <label className="block text-xs text-muted">
-            Walmart affiliate ID (Impact)
+          <label className="block">
+            <AffiliateFieldLabel networkId="walmart">
+              Walmart affiliate ID (Impact)
+            </AffiliateFieldLabel>
             <input
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               value={walmartAffiliateId}
               onChange={(e) => setWalmartAffiliateId(e.target.value)}
               placeholder="Impact publisher id"
             />
           </label>
-          <label className="block text-xs text-muted">
-            Best Buy affiliate ID (Impact)
+          <label className="block">
+            <AffiliateFieldLabel networkId="bestbuy">
+              Best Buy affiliate ID (Impact)
+            </AffiliateFieldLabel>
             <input
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               value={bestBuyAffiliateId}
               onChange={(e) => setBestBuyAffiliateId(e.target.value)}
               placeholder="Impact publisher id"
             />
           </label>
-          <label className="block text-xs text-muted">
-            Etsy Awin affiliate ID
+          <label className="block">
+            <AffiliateFieldLabel networkId="etsy">
+              Etsy Awin affiliate ID
+            </AffiliateFieldLabel>
             <input
-              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               value={etsyAwinAffiliateId}
               onChange={(e) => setEtsyAwinAffiliateId(e.target.value)}
               placeholder="Awin publisher id"

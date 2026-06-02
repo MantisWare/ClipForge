@@ -1,11 +1,8 @@
 import { apiError, apiSuccess, parseJsonBody } from "@/lib/api";
 import { requireUser, requireWorkspaceEditor } from "@/lib/api-auth";
 import { prisma, SourceStatus, SourceType } from "@clipforge/database";
-import {
-  buildSourceStorageKey,
-  getSignedUploadUrl,
-  presignUploadSchema,
-} from "@clipforge/shared";
+import { buildSourceStorageKey, presignUploadSchema } from "@clipforge/shared";
+import { getSignedUploadUrl } from "@clipforge/shared/server";
 
 export const POST = async (request: Request) => {
   const authResult = await requireUser();

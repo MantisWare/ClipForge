@@ -4,8 +4,8 @@ import { prisma } from "@clipforge/database";
 import {
   brandKitLogoPresignSchema,
   buildBrandKitLogoStorageKey,
-  getSignedUploadUrl,
 } from "@clipforge/shared";
+import { getSignedUploadUrl } from "@clipforge/shared/server";
 
 const extensionForContentType = (
   contentType: string,

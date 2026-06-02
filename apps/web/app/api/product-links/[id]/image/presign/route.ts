@@ -2,10 +2,8 @@ import { apiError, apiSuccess, parseJsonBody } from "@/lib/api";
 import { requireUser, requireWorkspaceEditor } from "@/lib/api-auth";
 import { isOverlaysEnabled, overlaysDisabledResponse } from "@/lib/overlay-feature";
 import { prisma } from "@clipforge/database";
-import {
-  buildProductLinkImageStorageKey,
-  getSignedUploadUrl,
-} from "@clipforge/shared";
+import { buildProductLinkImageStorageKey } from "@clipforge/shared";
+import { getSignedUploadUrl } from "@clipforge/shared/server";
 import { z } from "zod";
 
 const presignSchema = z.object({

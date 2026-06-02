@@ -132,10 +132,10 @@ export const DiscoverClient = ({ workspaceId }: Props) => {
       ? (searchQuery.data?.items ?? [])
       : (popularQuery.data?.items ?? []);
 
-  const isLoading =
-    searchKeyword !== null && searchKeyword !== ""
-      ? searchQuery.isLoading
-      : popularQuery.isLoading;
+  const isSearchMode = searchKeyword !== null && searchKeyword !== "";
+  const activeQuery = isSearchMode ? searchQuery : popularQuery;
+  const isLoading = activeQuery.isLoading;
+  const loadError = activeQuery.error;
 
   return (
     <div className="space-y-6">
@@ -171,6 +171,29 @@ export const DiscoverClient = ({ workspaceId }: Props) => {
       </div>
 
       {isLoading && <p className="text-sm text-muted">Loading videos…</p>}
+
+      {loadError !== null && (
+        <Card className="border-danger/40">
+          <CardTitle className="text-danger">Could not load videos</CardTitle>
+          <CardDescription className="space-y-2">
+            <p>{loadError.message}</p>
+            {loadError.message.includes("YouTube Data API key") && (
+              <p className="text-muted">
+                Create a key in Google Cloud Console, enable{" "}
+                <strong>YouTube Data API v3</strong>, add{" "}
+                <code className="rounded bg-panel-2 px-1 text-foreground">
+                  YOUTUBE_API_KEY
+                </code>{" "}
+                to <code className="rounded bg-panel-2 px-1">.env</code> at the
+                repo root (or{" "}
+                <code className="rounded bg-panel-2 px-1">apps/web/.env</code>
+                ), then restart{" "}
+                <code className="rounded bg-panel-2 px-1">pnpm dev</code>.
+              </p>
+            )}
+          </CardDescription>
+        </Card>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item) => (

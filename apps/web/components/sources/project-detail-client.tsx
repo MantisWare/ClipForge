@@ -19,6 +19,12 @@ type SourceDetail = {
   width?: number | null;
   height?: number | null;
   thumbnailUrl?: string | null;
+  lastFailure?: {
+    jobId: string;
+    jobType: string;
+    message: string;
+    completedAt: string | null;
+  } | null;
 };
 
 type PlaybackResponse = {
@@ -83,6 +89,22 @@ export const ProjectDetailClient = ({ sourceId }: Props) => {
         return 3000;
       }
       return false;
+    },
+  });
+
+  const retryImportMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/sources/${sourceId}/retry-import`, {
+        method: "POST",
+      });
+      const json = (await res.json()) as { error?: { message: string } };
+      if (json.error !== undefined) {
+        throw new Error(json.error.message);
+      }
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["source", sourceId] });
+      void queryClient.invalidateQueries({ queryKey: ["jobs"] });
     },
   });
 
@@ -157,10 +179,46 @@ export const ProjectDetailClient = ({ sourceId }: Props) => {
         </CardDescription>
 
         {source.status === "failed" && (
-          <p className="text-sm text-danger">
-            Processing failed. Use Transcribe again or retry from the processing
-            queue.
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-danger">
+              Processing failed.
+              {source.lastFailure?.message !== undefined &&
+              source.lastFailure.message !== "" ? (
+                <>
+                  {" "}
+                  <span className="font-mono text-xs">
+                    {source.lastFailure.message}
+                  </span>
+                </>
+              ) : (
+                " Check the processing queue on the dashboard for details."
+              )}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                onClick={() => retryImportMutation.mutate()}
+                disabled={retryImportMutation.isPending}
+              >
+                {retryImportMutation.isPending ? "Retrying…" : "Retry import"}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => transcribeMutation.mutate()}
+                disabled={transcribeMutation.isPending}
+              >
+                {transcribeMutation.isPending
+                  ? "Starting…"
+                  : "Transcribe again"}
+              </Button>
+            </div>
+            {retryImportMutation.isError && (
+              <p className="text-xs text-danger">
+                {retryImportMutation.error.message}
+              </p>
+            )}
+          </div>
         )}
 
         {(source.status === "pending" || source.status === "importing") && (

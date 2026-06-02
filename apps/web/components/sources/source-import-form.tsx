@@ -178,27 +178,32 @@ export const SourceImportForm = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
         <Input
+          className="min-w-0 flex-1"
           placeholder="https://youtube.com/watch?v=..."
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           aria-label="Video URL"
         />
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => void previewRisk()}
-          disabled={url === "" || isPending}
-        >
-          Check rights
-        </Button>
-        <Button
-          onClick={() => urlImportMutation.mutate()}
-          disabled={url === "" || isPending}
-        >
-          {urlImportMutation.isPending ? "Importing…" : "Import URL"}
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            className="whitespace-nowrap"
+            onClick={() => void previewRisk()}
+            disabled={url === "" || isPending}
+          >
+            Check rights
+          </Button>
+          <Button
+            className="whitespace-nowrap"
+            onClick={() => urlImportMutation.mutate()}
+            disabled={url === "" || isPending}
+          >
+            {urlImportMutation.isPending ? "Importing…" : "Import URL"}
+          </Button>
+        </div>
       </div>
 
       {validatedRisk !== null && (

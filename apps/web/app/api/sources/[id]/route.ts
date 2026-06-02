@@ -1,6 +1,6 @@
 import { apiError, apiSuccess } from "@/lib/api";
 import { requireUser, requireWorkspace } from "@/lib/api-auth";
-import { prisma } from "@clipforge/database";
+import { JobStatus, prisma } from "@clipforge/database";
 
 export const GET = async (
   _request: Request,
@@ -25,5 +25,32 @@ export const GET = async (
     return access.error;
   }
 
-  return apiSuccess(source);
+  const lastFailedJob = await prisma.job.findFirst({
+    where: {
+      sourceVideoId: id,
+      status: JobStatus.failed,
+    },
+    orderBy: { completedAt: "desc" },
+    select: {
+      id: true,
+      type: true,
+      errorMessage: true,
+      completedAt: true,
+    },
+  });
+
+  return apiSuccess({
+    ...source,
+    lastFailure:
+      lastFailedJob !== null &&
+      lastFailedJob.errorMessage !== null &&
+      lastFailedJob.errorMessage !== ""
+        ? {
+            jobId: lastFailedJob.id,
+            jobType: lastFailedJob.type,
+            message: lastFailedJob.errorMessage,
+            completedAt: lastFailedJob.completedAt,
+          }
+        : null,
+  });
 };
